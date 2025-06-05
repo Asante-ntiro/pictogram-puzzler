@@ -165,7 +165,7 @@ export function Home({ setActiveTab }: HomeProps) {
           This is a minimalistic Mini App built with OnchainKit components.
         </p>
         <Button
-          onClick={() => setActiveTab("features")}
+          onClick={() => setActiveTab("game")}
           icon={<Icon name="arrow-right" size="sm" />}
         >
           Explore Features
