@@ -1,11 +1,14 @@
-# MiniKit Template
+# Pictogram Puzzler
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-onchain --mini`](), configured with:
+Pictogram Puzzler is an engaging game where players guess movie titles from emoji clues. Built with Next.js and MiniKit, this game challenges players to decode emoji combinations representing popular movies.
 
-- [MiniKit](https://docs.base.org/builderkits/minikit/overview)
-- [OnchainKit](https://www.base.org/builders/onchainkit)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Next.js](https://nextjs.org/docs)
+## Game Features
+
+- **Multiple Difficulty Levels**: Choose between Easy and Hard modes
+- **Scoring System**: Earn points for correct answers with double points in Hard mode
+- **Visual Indicators**: Clear visual cues for different difficulty levels
+- **Direct Navigation**: Jump straight to your preferred difficulty from the home screen
+- **Emoji Puzzles**: Unique sets of movie puzzles for each difficulty level
 
 ## Getting Started
 
@@ -63,50 +66,44 @@ REDIS_TOKEN=
 npm run dev
 ```
 
-## Template Features
+## How to Play
 
-### Frame Configuration
-- `.well-known/farcaster.json` endpoint configured for Frame metadata and account association
-- Frame metadata automatically added to page headers in `layout.tsx`
+1. **Select Difficulty**: Choose between Easy mode for beginners or Hard mode for a greater challenge
+2. **Decode the Emoji**: Each puzzle presents a series of emojis representing a movie title
+3. **Submit Your Answer**: Type your guess in the input field and submit
+4. **Score Points**: Earn 10 points for each correct answer in Easy mode or 20 points in Hard mode
+5. **Track Your Progress**: Watch your score grow as you solve more puzzles
 
-### Background Notifications
-- Redis-backed notification system using Upstash
-- Ready-to-use notification endpoints in `api/notify` and `api/webhook`
-- Notification client utilities in `lib/notification-client.ts`
+## Difficulty Levels
 
-### Theming
-- Custom theme defined in `theme.css` with OnchainKit variables
-- Pixel font integration with Pixelify Sans
-- Dark/light mode support through OnchainKit
+### Easy Mode
+- Standard emoji puzzles with straightforward clues
+- 10 points awarded per correct answer
+- Perfect for beginners or casual players
 
-### MiniKit Provider
-The app is wrapped with `MiniKitProvider` in `providers.tsx`, configured with:
-- OnchainKit integration
-- Access to Frames context
-- Sets up Wagmi Connectors
-- Sets up Frame SDK listeners
-- Applies Safe Area Insets
+### Hard Mode
+- More challenging emoji combinations
+- Double points (20 per correct answer)
+- Designed for puzzle enthusiasts and movie buffs
 
-## Customization
+## Technical Implementation
 
-To get started building your own frame, follow these steps:
+- **React/Next.js**: Modern frontend framework for responsive UI
+- **MiniKit**: Provides core UI components and styling
+- **OnchainKit**: Enables frame functionality and interactions
+- **State Management**: React hooks for game state and scoring
+- **Responsive Design**: Optimized for both mobile and desktop play
 
-1. Remove the DemoComponents:
-   - Delete `components/DemoComponents.tsx`
-   - Remove demo-related imports from `page.tsx`
+## Future Enhancements
 
-2. Start building your Frame:
-   - Modify `page.tsx` to create your Frame UI
-   - Update theme variables in `theme.css`
-   - Adjust MiniKit configuration in `providers.tsx`
+- Leaderboard for tracking top scores
+- Additional categories beyond movies
+- Time-based challenges
+- Social sharing of results
 
-3. Add your frame to your account:
-   - Cast your frame to see it in action
-   - Share your frame with others to start building your community
+## Technologies Used
 
-## Learn More
-
-- [MiniKit Documentation](https://docs.base.org/builderkits/minikit/overview)
-- [OnchainKit Documentation](https://docs.base.org/builderkits/onchainkit/getting-started)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Next.js](https://nextjs.org/docs) - React framework
+- [MiniKit](https://docs.base.org/builderkits/minikit/overview) - UI components
+- [OnchainKit](https://www.base.org/builders/onchainkit) - Frame functionality
+- [Tailwind CSS](https://tailwindcss.com/docs) - Styling
