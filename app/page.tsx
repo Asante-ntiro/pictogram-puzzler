@@ -22,8 +22,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "./components/DemoComponents";
 import { Icon } from "./components/DemoComponents";
 import { Home } from "./components/DemoComponents";
-import { Features } from "./components/DemoComponents";
-import Game from "./components/Game";
+import { Game } from "./components/Game";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
@@ -106,7 +105,6 @@ export default function App() {
 
         <main className="flex-1">
           {activeTab === "home" && <Home setActiveTab={handleTabChange} />}
-          {activeTab === "features" && <Features setActiveTab={handleTabChange} />}
           {activeTab === "game" && <Game setActiveTab={handleTabChange} initialDifficulty={gameDifficulty} />}
         </main>
 

@@ -1,21 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
-import {
-  Transaction,
-  TransactionButton,
-  TransactionToast,
-  TransactionToastAction,
-  TransactionToastIcon,
-  TransactionToastLabel,
-  TransactionError,
-  TransactionResponse,
-  TransactionStatusAction,
-  TransactionStatusLabel,
-  TransactionStatus,
-} from "@coinbase/onchainkit/transaction";
-import { useNotification } from "@coinbase/onchainkit/minikit";
+import { type ReactNode } from "react";
 
 type ButtonProps = {
   children: ReactNode;
@@ -78,7 +63,7 @@ type CardProps = {
   onClick?: () => void;
 }
 
-function Card({
+export function Card({
   title,
   children,
   className = "",
@@ -111,48 +96,6 @@ function Card({
   );
 }
 
-type FeaturesProps = {
-  setActiveTab: (tab: string) => void;
-};
-
-export function Features({ setActiveTab }: FeaturesProps) {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <Card title="Key Features">
-        <ul className="space-y-3 mb-4">
-          <li className="flex items-start">
-            <Icon name="check" className="text-[var(--app-accent)] mt-1 mr-2" />
-            <span className="text-[var(--app-foreground-muted)]">
-              Minimalistic and beautiful UI design
-            </span>
-          </li>
-          <li className="flex items-start">
-            <Icon name="check" className="text-[var(--app-accent)] mt-1 mr-2" />
-            <span className="text-[var(--app-foreground-muted)]">
-              Responsive layout for all devices
-            </span>
-          </li>
-          <li className="flex items-start">
-            <Icon name="check" className="text-[var(--app-accent)] mt-1 mr-2" />
-            <span className="text-[var(--app-foreground-muted)]">
-              Dark mode support
-            </span>
-          </li>
-          <li className="flex items-start">
-            <Icon name="check" className="text-[var(--app-accent)] mt-1 mr-2" />
-            <span className="text-[var(--app-foreground-muted)]">
-              OnchainKit integration
-            </span>
-          </li>
-        </ul>
-        <Button variant="outline" onClick={() => setActiveTab("home")}>
-          Back to Home
-        </Button>
-      </Card>
-    </div>
-  );
-}
-
 type HomeProps = {
   setActiveTab: (tab: string, difficulty?: 'easy' | 'hard') => void;
 };
@@ -160,9 +103,9 @@ type HomeProps = {
 export function Home({ setActiveTab }: HomeProps) {
   return (
     <div className="space-y-6 animate-fade-in">
-      <Card title="My First Mini App">
+      <Card title="Pictogram Puzzler 🎬🎮">
         <p className="text-[var(--app-foreground-muted)] mb-4">
-          This is a minimalistic Mini App built with OnchainKit components.
+          Welcome to Pictogram Puzzler! Can you guess movie titles from just a few emojis? Choose your difficulty level and put your movie knowledge to the test. Earn bonus points for hard mode!
         </p>
         <div className="flex space-x-2">
           <Button
@@ -181,10 +124,6 @@ export function Home({ setActiveTab }: HomeProps) {
           </Button>
         </div>
       </Card>
-
-      <TodoList />
-
-      <TransactionCard />
     </div>
   );
 }
@@ -193,7 +132,7 @@ type IconProps = {
   name: "heart" | "star" | "check" | "plus" | "arrow-right";
   size?: "sm" | "md" | "lg";
   className?: string;
-}
+};
 
 export function Icon({ name, size = "md", className = "" }: IconProps) {
   const sizeClasses = {
@@ -212,10 +151,8 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden="true"
       >
-        <title>Heart</title>
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
       </svg>
     ),
     star: (
@@ -227,10 +164,8 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden="true"
       >
-        <title>Star</title>
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
       </svg>
     ),
     check: (
@@ -242,10 +177,8 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden="true"
       >
-        <title>Check</title>
-        <polyline points="20 6 9 17 4 12" />
+        <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
     ),
     plus: (
@@ -257,11 +190,9 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden="true"
       >
-        <title>Plus</title>
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
     ),
     "arrow-right": (
@@ -273,200 +204,14 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden="true"
       >
-        <title>Arrow Right</title>
-        <line x1="5" y1="12" x2="19" y2="12" />
-        <polyline points="12 5 19 12 12 19" />
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
       </svg>
     ),
   };
 
   return (
-    <span className={`inline-block ${sizeClasses[size]} ${className}`}>
-      {icons[name]}
-    </span>
-  );
-}
-
-type Todo = {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-function TodoList() {
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: 1, text: "Learn about MiniKit", completed: false },
-    { id: 2, text: "Build a Mini App", completed: true },
-    { id: 3, text: "Deploy to Base and go viral", completed: false },
-  ]);
-  const [newTodo, setNewTodo] = useState("");
-
-  const addTodo = () => {
-    if (newTodo.trim() === "") return;
-
-    const newId =
-      todos.length > 0 ? Math.max(...todos.map((t) => t.id)) + 1 : 1;
-    setTodos([...todos, { id: newId, text: newTodo, completed: false }]);
-    setNewTodo("");
-  };
-
-  const toggleTodo = (id: number) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
-  };
-
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      addTodo();
-    }
-  };
-
-  return (
-    <Card title="Get started">
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add a new task..."
-            className="flex-1 px-3 py-2 bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
-          />
-          <Button
-            variant="primary"
-            size="md"
-            onClick={addTodo}
-            icon={<Icon name="plus" size="sm" />}
-          >
-            Add
-          </Button>
-        </div>
-
-        <ul className="space-y-2">
-          {todos.map((todo) => (
-            <li key={todo.id} className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  id={`todo-${todo.id}`}
-                  onClick={() => toggleTodo(todo.id)}
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    todo.completed
-                      ? "bg-[var(--app-accent)] border-[var(--app-accent)]"
-                      : "border-[var(--app-foreground-muted)] bg-transparent"
-                  }`}
-                >
-                  {todo.completed && (
-                    <Icon
-                      name="check"
-                      size="sm"
-                      className="text-[var(--app-background)]"
-                    />
-                  )}
-                </button>
-                <label
-                  htmlFor={`todo-${todo.id}`}
-                  className={`text-[var(--app-foreground-muted)] cursor-pointer ${todo.completed ? "line-through opacity-70" : ""}`}
-                >
-                  {todo.text}
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={() => deleteTodo(todo.id)}
-                className="text-[var(--app-foreground-muted)] hover:text-[var(--app-foreground)]"
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </Card>
-  );
-}
-
-
-function TransactionCard() {
-  const { address } = useAccount();
-
-  // Example transaction call - sending 0 ETH to self
-  const calls = useMemo(() => address
-    ? [
-        {
-          to: address,
-          data: "0x" as `0x${string}`,
-          value: BigInt(0),
-        },
-      ]
-    : [], [address]);
-
-  const sendNotification = useNotification();
-
-  const handleSuccess = useCallback(async (response: TransactionResponse) => {
-    const transactionHash = response.transactionReceipts[0].transactionHash;
-
-    console.log(`Transaction successful: ${transactionHash}`);
-
-    await sendNotification({
-      title: "Congratulations!",
-      body: `You sent your a transaction, ${transactionHash}!`,
-    });
-  }, [sendNotification]);
-
-  return (
-    <Card title="Make Your First Transaction">
-      <div className="space-y-4">
-        <p className="text-[var(--app-foreground-muted)] mb-4">
-          Experience the power of seamless sponsored transactions with{" "}
-          <a
-            href="https://onchainkit.xyz"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#0052FF] hover:underline"
-          >
-            OnchainKit
-          </a>
-          .
-        </p>
-
-        <div className="flex flex-col items-center">
-          {address ? (
-            <Transaction
-              calls={calls}
-              onSuccess={handleSuccess}
-              onError={(error: TransactionError) =>
-                console.error("Transaction failed:", error)
-              }
-            >
-              <TransactionButton className="text-white text-md" />
-              <TransactionStatus>
-                <TransactionStatusAction />
-                <TransactionStatusLabel />
-              </TransactionStatus>
-              <TransactionToast className="mb-4">
-                <TransactionToastIcon />
-                <TransactionToastLabel />
-                <TransactionToastAction />
-              </TransactionToast>
-            </Transaction>
-          ) : (
-            <p className="text-yellow-400 text-sm text-center mt-2">
-              Connect your wallet to send a transaction
-            </p>
-          )}
-        </div>
-      </div>
-    </Card>
+    <div className={`${sizeClasses[size]} ${className}`}>{icons[name]}</div>
   );
 }
