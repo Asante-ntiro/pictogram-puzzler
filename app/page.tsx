@@ -29,6 +29,7 @@ export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const [gameDifficulty, setGameDifficulty] = useState<'easy' | 'hard'>('easy');
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -43,6 +44,13 @@ export default function App() {
     const frameAdded = await addFrame();
     setFrameAdded(Boolean(frameAdded));
   }, [addFrame]);
+
+  const handleTabChange = useCallback((tab: string, difficulty?: 'easy' | 'hard') => {
+    setActiveTab(tab);
+    if (difficulty) {
+      setGameDifficulty(difficulty);
+    }
+  }, []);
 
   const saveFrameButton = useMemo(() => {
     if (context && !context.client.added) {
@@ -97,9 +105,9 @@ export default function App() {
         </header>
 
         <main className="flex-1">
-          {activeTab === "home" && <Home setActiveTab={setActiveTab} />}
-          {activeTab === "features" && <Features setActiveTab={setActiveTab} />}
-          {activeTab === "game" && <Game setActiveTab={setActiveTab} />}
+          {activeTab === "home" && <Home setActiveTab={handleTabChange} />}
+          {activeTab === "features" && <Features setActiveTab={handleTabChange} />}
+          {activeTab === "game" && <Game setActiveTab={handleTabChange} initialDifficulty={gameDifficulty} />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">

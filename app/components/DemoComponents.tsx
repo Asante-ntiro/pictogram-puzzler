@@ -154,7 +154,7 @@ export function Features({ setActiveTab }: FeaturesProps) {
 }
 
 type HomeProps = {
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string, difficulty?: 'easy' | 'hard') => void;
 };
 
 export function Home({ setActiveTab }: HomeProps) {
@@ -164,12 +164,22 @@ export function Home({ setActiveTab }: HomeProps) {
         <p className="text-[var(--app-foreground-muted)] mb-4">
           This is a minimalistic Mini App built with OnchainKit components.
         </p>
-        <Button
-          onClick={() => setActiveTab("game")}
-          icon={<Icon name="arrow-right" size="sm" />}
-        >
-          Explore Features
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => setActiveTab("game", "easy")}
+            icon={<Icon name="arrow-right" size="sm" />}
+            className="bg-green-100 hover:bg-green-200"
+          >
+            Easy Mode
+          </Button>
+          <Button
+            onClick={() => setActiveTab("game", "hard")}
+            icon={<Icon name="arrow-right" size="sm" />}
+            className="bg-red-100 hover:bg-red-200"
+          >
+            Hard Mode
+          </Button>
+        </div>
       </Card>
 
       <TodoList />

@@ -19,6 +19,7 @@ type Movie = {
 type GameProps = {
   setActiveTab: (tab: string) => void;
   className?: string;
+  initialDifficulty?: 'easy' | 'hard';
 };
 
 type CardProps = {
@@ -213,7 +214,7 @@ function GameControls({ isGameActive, onShowHint, onSkip, onStartNewGame, curren
   );
 }
 
-export function Game({ setActiveTab, className = "" }: GameProps) {
+export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' }: GameProps) {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -223,7 +224,7 @@ export function Game({ setActiveTab, className = "" }: GameProps) {
   const [isGameActive, setIsGameActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>(initialDifficulty);
 
   // Start a new puzzle when component mounts
   useEffect(() => {
