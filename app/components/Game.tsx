@@ -318,7 +318,7 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={toggleDifficulty}
+          // onClick={toggleDifficulty}
           className={`${difficulty === 'hard' ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'}`}
         >
           {difficulty === 'easy' ? 'Easy 😊' : 'Hard 😰'}
