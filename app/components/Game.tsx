@@ -308,7 +308,7 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
         />
       )}
       
-      <Card title="Emoji Story Decoder">
+      <Card title="Guess The Movie!">
         <div className="text-center mb-4">
           <p className="text-[var(--app-foreground-muted)] mb-6">
             Can you decode the movie title from these emojis?
@@ -318,7 +318,7 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={toggleDifficulty}
+          // onClick={toggleDifficulty}
           className={`${difficulty === 'hard' ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'}`}
         >
           {difficulty === 'easy' ? 'Easy 😊' : 'Hard 😰'}
