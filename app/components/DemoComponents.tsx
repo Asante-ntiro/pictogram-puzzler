@@ -111,14 +111,14 @@ export function Home({ setActiveTab }: HomeProps) {
           <Button
             onClick={() => setActiveTab("game", "easy")}
             icon={<Icon name="arrow-right" size="sm" />}
-            className="bg-green-100 hover:bg-green-200"
+            className="bg-green-300 hover:bg-green-500"
           >
             Easy Mode
           </Button>
           <Button
             onClick={() => setActiveTab("game", "hard")}
             icon={<Icon name="arrow-right" size="sm" />}
-            className="bg-red-100 hover:bg-red-200"
+            className="bg-red-300 hover:bg-red-500"
           >
             Hard Mode
           </Button>
