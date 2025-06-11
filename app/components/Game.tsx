@@ -225,21 +225,51 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
   const [difficulty, setDifficulty] = useState<'easy' | 'hard'>(initialDifficulty);
+  const [shownMovies, setShownMovies] = useState<string[]>([]);
 
   // Start a new puzzle when component mounts
   useEffect(() => {
     startNewPuzzle();
   }, []);
 
+  // Reset shown movies when difficulty changes
+  useEffect(() => {
+    setShownMovies([]);
+  }, [difficulty]);
+
   const startNewPuzzle = useCallback(() => {
     const filteredMovies = movies.filter(movie => movie.difficulty === difficulty);
-    const randomIndex = Math.floor(Math.random() * filteredMovies.length);
-    setCurrentPuzzle(filteredMovies[randomIndex]);
+    
+    // Filter out movies that have already been shown
+    const availableMovies = filteredMovies.filter(
+      movie => !shownMovies.includes(movie.answer)
+    );
+
+    // If all movies have been shown, reset tracking or provide a completion message
+    if (availableMovies.length === 0) {
+      setFeedback("You've seen all the movies for this difficulty level! Starting over.");
+      setShownMovies([]);
+      setTimeout(() => {
+        const randomIndex = Math.floor(Math.random() * filteredMovies.length);
+        selectMovie(filteredMovies[randomIndex]);
+      }, 2000);
+      return;
+    }
+
+    // Select a random movie from those not yet shown
+    const randomIndex = Math.floor(Math.random() * availableMovies.length);
+    selectMovie(availableMovies[randomIndex]);
+  }, [difficulty, shownMovies]);
+
+  // Helper function to select a movie and update state
+  const selectMovie = useCallback((movie: Movie) => {
+    setCurrentPuzzle(movie);
+    setShownMovies(prev => [...prev, movie.answer]);
     setGuess("");
     setHintsUsed(0);
     setFeedback("");
     setIsGameActive(true);
-  }, [difficulty]);
+  }, []);
 
   const toggleDifficulty = useCallback(() => {
     setDifficulty(prev => (prev === 'easy' ? 'hard' : 'easy'));
