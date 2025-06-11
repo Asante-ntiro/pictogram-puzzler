@@ -113,9 +113,9 @@ export default function App() {
             variant="ghost"
             size="sm"
             className="text-[var(--ock-text-foreground-muted)] text-xs"
-            onClick={() => openUrl("https://base.org/builders/minikit")}
+            onClick={() => openUrl("https://www.hackersdao.com/celo-farcaster-quiz-game-hackathon")}
           >
-            Built on Base with MiniKit
+            Built on Celo for The Farcaster Quiz Game Hackathon
           </Button>
         </footer>
       </div>
