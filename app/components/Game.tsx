@@ -271,9 +271,6 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
     setIsGameActive(true);
   }, []);
 
-  const toggleDifficulty = useCallback(() => {
-    setDifficulty(prev => (prev === 'easy' ? 'hard' : 'easy'));
-  }, []);
 
   const checkAnswer = useCallback(() => {
     if (!currentPuzzle || !guess.trim()) {
