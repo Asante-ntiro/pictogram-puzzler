@@ -172,12 +172,19 @@ function Feedback({ message }: FeedbackProps) {
 }
 
 function GuessInput({ value, onChange, onSubmit, disabled }: GuessInputProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !disabled) {
+      onSubmit();
+    }
+  };
+
   return (
     <div className="input-section flex gap-2 mb-6">
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="Enter your guess..."
         disabled={disabled}
         className="guess-input flex-grow px-4 py-2 rounded-lg border border-[var(--app-card-border)] bg-[var(--app-background)] text-[var(--app-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)]"
