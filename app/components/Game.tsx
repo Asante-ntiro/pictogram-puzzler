@@ -406,9 +406,10 @@ type ScoreCardProps = {
   score: number;
   streak: number;
   bestScore?: number;
-}
+  setActiveTab?: (tab: string) => void;
+};
 
-export function ScoreCard({ score, streak, bestScore }: ScoreCardProps) {
+export function ScoreCard({ score, streak, bestScore, setActiveTab }: ScoreCardProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <Card title="Your Stats 🏆">
@@ -427,6 +428,16 @@ export function ScoreCard({ score, streak, bestScore }: ScoreCardProps) {
               <span className="text-xl font-bold text-purple-500">{bestScore}✨</span>
             </div>
           )}
+          
+          <div className="flex justify-center mt-6">
+            <Button 
+              variant="primary" 
+              onClick={() => setActiveTab && setActiveTab("home")}
+              className="mt-4"
+            >
+              Back to Home
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

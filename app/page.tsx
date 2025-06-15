@@ -127,7 +127,7 @@ export default function App() {
               setStreak={setStreak}
             />
           )}
-          {activeTab === "score" && <ScoreCard score={score} streak={streak} bestScore={bestScore} />}
+          {activeTab === "score" && <ScoreCard score={score} streak={streak} bestScore={bestScore} setActiveTab={handleTabChange} />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">
