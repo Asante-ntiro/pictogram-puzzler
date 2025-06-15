@@ -243,26 +243,31 @@ export function Game({
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
   const [difficulty, setDifficulty] = useState<'easy' | 'hard'>(initialDifficulty);
+  const [availableMovies, setAvailableMovies] = useState<Movie[]>([]);
 
-  // Start a new puzzle when component mounts
+  // Initialize available movies when component mounts or difficulty changes
   useEffect(() => {
-    startNewPuzzle();
-  }, []);
-
-  // Reset shown movies when difficulty changes
-  useEffect(() => {
-    setShownMovies([]);
-  }, [difficulty]);
-
-  // Start a new puzzle
-  const startNewPuzzle = useCallback(() => {
     // Filter movies by difficulty
     const filteredMovies = movies.filter(movie => movie.difficulty === difficulty);
     
     // Filter out movies that have already been shown
-    const availableMovies = filteredMovies.filter(movie => !shownMovies.includes(movie.answer));
+    const moviesNotShown = filteredMovies.filter(movie => !shownMovies.includes(movie.answer));
+    
+    // Shuffle the available movies
+    const shuffledMovies = [...moviesNotShown].sort(() => Math.random() - 0.5);
+    
+    setAvailableMovies(shuffledMovies);
+  }, [difficulty, shownMovies]);
 
-    // If all movies have been shown, handle game completion
+  // Start a new puzzle when component mounts
+  useEffect(() => {
+    if (availableMovies.length > 0 && !currentPuzzle) {
+      startNewPuzzle();
+    }
+  }, [availableMovies]);
+
+  // Start a new puzzle
+  const startNewPuzzle = useCallback(() => {
     if (availableMovies.length === 0) {
       setGameCompleted(true);
       setFeedback("You've completed all puzzles for this difficulty level!");
@@ -273,20 +278,22 @@ export function Game({
       return;
     }
 
-    // Select a random movie from those not yet shown
-    const randomIndex = Math.floor(Math.random() * availableMovies.length);
-    selectMovie(availableMovies[randomIndex]);
-  }, [difficulty, shownMovies, setShownMovies, setGameCompleted, setActiveTab]);
-
-  // Helper function to select a movie and update state
-  const selectMovie = useCallback((movie: Movie) => {
-    setCurrentPuzzle(movie);
-    setShownMovies([...shownMovies, movie.answer]);
+    // Take the first movie from the available list
+    const nextMovie = availableMovies[0];
+    
+    // Remove this movie from available movies
+    setAvailableMovies(prev => prev.slice(1));
+    
+    // Add to shown movies
+    setShownMovies([...shownMovies, nextMovie.answer]);
+    
+    // Set as current puzzle
+    setCurrentPuzzle(nextMovie);
     setGuess("");
     setHintsUsed(0);
     setFeedback("");
     setIsGameActive(true);
-  }, [shownMovies, setShownMovies]);
+  }, [availableMovies, shownMovies, setShownMovies, setGameCompleted, setActiveTab]);
 
   const checkAnswer = useCallback(() => {
     if (!currentPuzzle || !guess.trim() || gameCompleted) {
