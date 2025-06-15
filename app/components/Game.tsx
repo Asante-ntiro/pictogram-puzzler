@@ -20,6 +20,10 @@ type GameProps = {
   setActiveTab: (tab: string) => void;
   className?: string;
   initialDifficulty?: 'easy' | 'hard';
+  score: number;
+  setScore: (score: number) => void;
+  streak: number;
+  setStreak: (streak: number) => void;
 };
 
 type CardProps = {
@@ -214,9 +218,15 @@ function GameControls({ isGameActive, onShowHint, onSkip, onStartNewGame, curren
   );
 }
 
-export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' }: GameProps) {
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
+export function Game({ 
+  setActiveTab, 
+  className = "", 
+  initialDifficulty = 'easy',
+  score,
+  setScore,
+  streak,
+  setStreak
+}: GameProps) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [currentPuzzle, setCurrentPuzzle] = useState<Movie | null>(null);
   const [guess, setGuess] = useState("");
@@ -250,8 +260,9 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
       setFeedback("You've seen all the movies for this difficulty level! Starting over.");
       setShownMovies([]);
       setTimeout(() => {
-        const randomIndex = Math.floor(Math.random() * filteredMovies.length);
-        selectMovie(filteredMovies[randomIndex]);
+        // const randomIndex = Math.floor(Math.random() * filteredMovies.length);
+        // selectMovie(filteredMovies[randomIndex]);
+        setActiveTab("score");
       }, 2000);
       return;
     }
@@ -296,8 +307,9 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
       }, 2000);
       // Award more points for hard difficulty
       const difficultyBonus = difficulty === 'hard' ? 2 : 1;
-      setScore(prev => prev + (hintsUsed === 0 ? 10 : 5) * difficultyBonus);
-      setStreak(prev => prev + 1);
+      const pointsToAdd = (hintsUsed === 0 ? 10 : 5) * difficultyBonus;
+      setScore(score + pointsToAdd);
+      setStreak(streak + 1);
       setIsGameActive(false);
     } else {
       setFeedback("❌ Not quite right. Try again!");
@@ -384,6 +396,37 @@ export function Game({ setActiveTab, className = "", initialDifficulty = 'easy' 
           <Button variant="outline" onClick={() => setActiveTab("home")}>
             Back to Home
           </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+type ScoreCardProps = {
+  score: number;
+  streak: number;
+  bestScore?: number;
+}
+
+export function ScoreCard({ score, streak, bestScore }: ScoreCardProps) {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <Card title="Your Stats 🏆">
+        <div className="flex flex-col space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-[var(--app-foreground-muted)]">Current Score:</span>
+            <span className="text-xl font-bold">{score}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[var(--app-foreground-muted)]">Current Streak:</span>
+            <span className="text-xl font-bold text-orange-500">{streak}🔥</span>
+          </div>
+          {bestScore !== undefined && (
+            <div className="flex justify-between items-center">
+              <span className="text-[var(--app-foreground-muted)]">Best Score:</span>
+              <span className="text-xl font-bold text-purple-500">{bestScore}✨</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

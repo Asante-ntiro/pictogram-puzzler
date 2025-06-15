@@ -23,12 +23,17 @@ import { Button } from "./components/DemoComponents";
 import { Icon } from "./components/DemoComponents";
 import { Home } from "./components/DemoComponents";
 import { Game } from "./components/Game";
+import {ScoreCard} from "./components/Game";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
   const [gameDifficulty, setGameDifficulty] = useState<'easy' | 'hard'>('easy');
+  // Lifted state from Game component
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -50,6 +55,13 @@ export default function App() {
       setGameDifficulty(difficulty);
     }
   }, []);
+
+  // Update best score whenever score changes
+  useEffect(() => {
+    if (score > bestScore) {
+      setBestScore(score);
+    }
+  }, [score, bestScore]);
 
   const saveFrameButton = useMemo(() => {
     if (context && !context.client.added) {
@@ -105,7 +117,17 @@ export default function App() {
 
         <main className="flex-1">
           {activeTab === "home" && <Home setActiveTab={handleTabChange} />}
-          {activeTab === "game" && <Game setActiveTab={handleTabChange} initialDifficulty={gameDifficulty} />}
+          {activeTab === "game" && (
+            <Game 
+              setActiveTab={handleTabChange} 
+              initialDifficulty={gameDifficulty} 
+              score={score}
+              setScore={setScore}
+              streak={streak}
+              setStreak={setStreak}
+            />
+          )}
+          {activeTab === "score" && <ScoreCard score={score} streak={streak} bestScore={bestScore} />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">

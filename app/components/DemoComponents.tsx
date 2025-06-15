@@ -96,6 +96,7 @@ export function Card({
   );
 }
 
+
 type HomeProps = {
   setActiveTab: (tab: string, difficulty?: 'easy' | 'hard') => void;
 };
