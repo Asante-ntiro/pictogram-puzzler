@@ -34,6 +34,9 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [bestScore, setBestScore] = useState(0);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [shownMoviesEasy, setShownMoviesEasy] = useState<string[]>([]);
+  const [shownMoviesHard, setShownMoviesHard] = useState<string[]>([]);
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -44,6 +47,41 @@ export default function App() {
     }
   }, [setFrameReady, isFrameReady]);
 
+  // Load game state from localStorage on initial render
+  useEffect(() => {
+    const savedState = localStorage.getItem('pictogramPuzzler');
+    if (savedState) {
+      try {
+        const { 
+          shownMoviesEasy, 
+          shownMoviesHard, 
+          score, 
+          bestScore, 
+          gameCompleted 
+        } = JSON.parse(savedState);
+        
+        setShownMoviesEasy(shownMoviesEasy || []);
+        setShownMoviesHard(shownMoviesHard || []);
+        setScore(score || 0);
+        setBestScore(bestScore || 0);
+        setGameCompleted(gameCompleted || false);
+      } catch (e) {
+        console.error('Error loading saved game state:', e);
+      }
+    }
+  }, []);
+  
+  // Save game state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('pictogramPuzzler', JSON.stringify({
+      shownMoviesEasy,
+      shownMoviesHard,
+      score,
+      bestScore,
+      gameCompleted
+    }));
+  }, [shownMoviesEasy, shownMoviesHard, score, bestScore, gameCompleted]);
+
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();
     setFrameAdded(Boolean(frameAdded));
@@ -53,6 +91,11 @@ export default function App() {
     setActiveTab(tab);
     if (difficulty) {
       setGameDifficulty(difficulty);
+    }
+    
+    // Reset game completion state when starting a new game
+    if (tab === "game") {
+      setGameCompleted(false);
     }
   }, []);
 
@@ -125,9 +168,26 @@ export default function App() {
               setScore={setScore}
               streak={streak}
               setStreak={setStreak}
+              gameCompleted={gameCompleted}
+              setGameCompleted={setGameCompleted}
+              shownMovies={gameDifficulty === 'easy' ? shownMoviesEasy : shownMoviesHard}
+              setShownMovies={gameDifficulty === 'easy' ? setShownMoviesEasy : setShownMoviesHard}
             />
           )}
-          {activeTab === "score" && <ScoreCard score={score} streak={streak} bestScore={bestScore} setActiveTab={handleTabChange} />}
+          {activeTab === "score" && 
+            <ScoreCard 
+              score={score} 
+              streak={streak} 
+              bestScore={bestScore} 
+              setActiveTab={handleTabChange}
+              resetGame={() => {
+                setShownMoviesEasy([]);
+                setShownMoviesHard([]);
+                setGameCompleted(false);
+                setScore(0);
+                setStreak(0);
+              }} 
+            />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">

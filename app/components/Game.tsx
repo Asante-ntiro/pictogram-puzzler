@@ -24,6 +24,10 @@ type GameProps = {
   setScore: (score: number) => void;
   streak: number;
   setStreak: (streak: number) => void;
+  gameCompleted: boolean;
+  setGameCompleted: (gameCompleted: boolean) => void;
+  shownMovies: string[];
+  setShownMovies: (movies: string[]) => void;
 };
 
 type CardProps = {
@@ -225,7 +229,11 @@ export function Game({
   score,
   setScore,
   streak,
-  setStreak
+  setStreak,
+  gameCompleted,
+  setGameCompleted,
+  shownMovies,
+  setShownMovies
 }: GameProps) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [currentPuzzle, setCurrentPuzzle] = useState<Movie | null>(null);
@@ -235,7 +243,6 @@ export function Game({
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
   const [difficulty, setDifficulty] = useState<'easy' | 'hard'>(initialDifficulty);
-  const [shownMovies, setShownMovies] = useState<string[]>([]);
 
   // Start a new puzzle when component mounts
   useEffect(() => {
@@ -247,21 +254,20 @@ export function Game({
     setShownMovies([]);
   }, [difficulty]);
 
+  // Start a new puzzle
   const startNewPuzzle = useCallback(() => {
+    // Filter movies by difficulty
     const filteredMovies = movies.filter(movie => movie.difficulty === difficulty);
     
     // Filter out movies that have already been shown
-    const availableMovies = filteredMovies.filter(
-      movie => !shownMovies.includes(movie.answer)
-    );
+    const availableMovies = filteredMovies.filter(movie => !shownMovies.includes(movie.answer));
 
-    // If all movies have been shown, reset tracking or provide a completion message
+    // If all movies have been shown, handle game completion
     if (availableMovies.length === 0) {
-      setFeedback("You've seen all the movies for this difficulty level! Starting over.");
-      setShownMovies([]);
+      setGameCompleted(true);
+      setFeedback("You've completed all puzzles for this difficulty level!");
+      setIsGameActive(false);
       setTimeout(() => {
-        // const randomIndex = Math.floor(Math.random() * filteredMovies.length);
-        // selectMovie(filteredMovies[randomIndex]);
         setActiveTab("score");
       }, 2000);
       return;
@@ -270,21 +276,20 @@ export function Game({
     // Select a random movie from those not yet shown
     const randomIndex = Math.floor(Math.random() * availableMovies.length);
     selectMovie(availableMovies[randomIndex]);
-  }, [difficulty, shownMovies]);
+  }, [difficulty, shownMovies, setShownMovies, setGameCompleted, setActiveTab]);
 
   // Helper function to select a movie and update state
   const selectMovie = useCallback((movie: Movie) => {
     setCurrentPuzzle(movie);
-    setShownMovies(prev => [...prev, movie.answer]);
+    setShownMovies([...shownMovies, movie.answer]);
     setGuess("");
     setHintsUsed(0);
     setFeedback("");
     setIsGameActive(true);
-  }, []);
-
+  }, [shownMovies, setShownMovies]);
 
   const checkAnswer = useCallback(() => {
-    if (!currentPuzzle || !guess.trim()) {
+    if (!currentPuzzle || !guess.trim() || gameCompleted) {
       setFeedback("Please enter your guess!");
       return;
     }
@@ -315,7 +320,7 @@ export function Game({
       setFeedback("❌ Not quite right. Try again!");
       setStreak(0);
     }
-  }, [currentPuzzle, guess, hintsUsed, difficulty]);
+  }, [currentPuzzle, guess, hintsUsed, difficulty, gameCompleted]);
 
   const showHint = useCallback(() => {
     if (currentPuzzle) {
@@ -348,21 +353,33 @@ export function Game({
       )}
       
       <Card title="Guess The Movie!">
+        {gameCompleted && (
+          <div className="game-completed-banner p-3 bg-green-100 text-green-800 rounded-lg mb-4 text-center">
+            Game Completed! View your final score or try another difficulty.
+          </div>
+        )}
         <div className="text-center mb-4">
           <p className="text-[var(--app-foreground-muted)] mb-6">
             Can you decode the movie title from these emojis?
           </p>
           <div className="flex items-center">
-        <span className="text-sm mr-2 text-[var(--app-foreground-muted)]">Difficulty:</span>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          // onClick={toggleDifficulty}
-          className={`${difficulty === 'hard' ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'}`}
-        >
-          {difficulty === 'easy' ? 'Easy 😊' : 'Hard 😰'}
-        </Button>
-      </div>
+            <span className="text-sm mr-2 text-[var(--app-foreground-muted)]">Difficulty:</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                const newDifficulty = difficulty === 'easy' ? 'hard' : 'easy';
+                setDifficulty(newDifficulty);
+                setCurrentPuzzle(null);
+                setIsGameActive(false);
+                setGameCompleted(false);
+                setFeedback(`Switched to ${newDifficulty} mode. ${newDifficulty === 'hard' ? 'Double points!' : 'Standard points.'}`);
+              }}
+              className={`${difficulty === 'hard' ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'}`}
+            >
+              {difficulty === 'easy' ? 'Easy 😊' : 'Hard 😰'}
+            </Button>
+          </div>
           <ScoreDisplay score={score} streak={streak} />
           
           {currentPuzzle && (
@@ -407,9 +424,10 @@ type ScoreCardProps = {
   streak: number;
   bestScore?: number;
   setActiveTab?: (tab: string) => void;
+  resetGame?: () => void;
 };
 
-export function ScoreCard({ score, streak, bestScore, setActiveTab }: ScoreCardProps) {
+export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }: ScoreCardProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       <Card title="Your Stats 🏆">
@@ -429,7 +447,7 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab }: ScoreCardP
             </div>
           )}
           
-          <div className="flex justify-center mt-6">
+          <div className="flex flex-col items-center mt-6 space-y-3">
             <Button 
               variant="primary" 
               onClick={() => setActiveTab && setActiveTab("home")}
@@ -437,6 +455,16 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab }: ScoreCardP
             >
               Back to Home
             </Button>
+            
+            {resetGame && (
+              <Button 
+                variant="secondary" 
+                onClick={resetGame}
+                className=""
+              >
+                Reset Game Progress
+              </Button>
+            )}
           </div>
         </div>
       </Card>
