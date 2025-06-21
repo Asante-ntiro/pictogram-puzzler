@@ -3,6 +3,19 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
+import {
+  Name,
+  Identity,
+  Address,
+  Avatar,
+  EthBalance,
+} from "@coinbase/onchainkit/identity";
+import {
+  ConnectWallet,
+  Wallet,
+  WalletDropdown,
+  WalletDropdownDisconnect,
+} from "@coinbase/onchainkit/wallet";
 
 const Confetti = dynamic(() => import("react-confetti"), {
   ssr: false,
@@ -467,7 +480,7 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }:
               onClick={() => setActiveTab && setActiveTab("home")}
               className="mt-4"
             >
-              Back to Home
+              Go back home
             </Button>
             
             {resetGame && (
@@ -479,6 +492,25 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }:
                 Reset Game Progress
               </Button>
             )}
+            <span className="text-[var(--app-foreground-muted)]">📊 Connect your wallet to save your score on-chain!</span>
+            <div>
+            <div className="flex items-center space-x-2">
+              <Wallet className="z-10">
+                <ConnectWallet>
+                  <Name className="text-inherit" />
+                </ConnectWallet>
+                <WalletDropdown>
+                  <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                    <Avatar />
+                    <Name />
+                    <Address />
+                    <EthBalance />
+                  </Identity>
+                  <WalletDropdownDisconnect />
+                </WalletDropdown>
+              </Wallet>
+            </div>
+          </div>
           </div>
         </div>
       </Card>
