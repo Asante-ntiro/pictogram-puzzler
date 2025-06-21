@@ -5,11 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IFarcasterOpenRank} from "./IFarcasterOpenRank.sol";
 import {IVerificationsV4Reader} from "./IVerificationsV4Reader.sol";
 
-// TODO find a better name
-
 /// @title Global Farcaster OpenkRank scores
-/// @custom:oz-upgrades-from OnChainScoresV1
-contract OnChainScoresV2 is IFarcasterOpenRank, Ownable {
+contract OnChainScores is IFarcasterOpenRank, Ownable {
     // --- BEGIN state variables ---
 
     /// @notice Leaderboard entries, sorted by score.
