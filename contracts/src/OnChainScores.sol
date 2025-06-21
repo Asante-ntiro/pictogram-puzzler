@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IFarcasterOpenRank} from "./IFarcasterOpenRank.sol";
-import {IVerificationsV4Reader} from "./IVerificationsV4Reader.sol";
+
 
 /// @title Global Farcaster OpenkRank scores
 contract OnChainScores is IFarcasterOpenRank, Ownable {
@@ -17,17 +17,11 @@ contract OnChainScores is IFarcasterOpenRank, Ownable {
     /// Rank values stored here are 1-based; 0 means fid not found.
     mapping(uint256 => uint256) public fidRank;
 
-    /// @dev FID lookup contract
-    IVerificationsV4Reader public fidLookup;
-
     // --- END state variables ---
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address owner) Ownable(msg.sender) {}
 
-    function setFidLookup(IVerificationsV4Reader _fidLookup) public onlyOwner {
-        fidLookup = _fidLookup;
-    }
 
     /// @notice Extends the leaderboard with additional entries at the end.
     function appendScores(User[] calldata users) external onlyOwner {
@@ -59,6 +53,13 @@ contract OnChainScores is IFarcasterOpenRank, Ownable {
     }
 
     // --- BEGIN impl IFarcasterOpenRank ---
+
+    /// @notice Gets the given FID's rank.
+    /// @param fid Farcaster ID.
+    /// @return rank Rank (position) in the leaderboard.
+    function getFidRank(uint256 fid) external view returns (uint256 rank) {
+        return fidRank[fid];
+    }
 
     function leaderboardLength() external view returns (uint256) {
         return leaderboard.length;
@@ -128,23 +129,6 @@ contract OnChainScores is IFarcasterOpenRank, Ownable {
         }
     }
 
-    function getFIDRankAndScoreForVerifier(address verifier)
-        external
-        view
-        returns (uint256 fid, uint256 rank, uint256 score)
-    {
-        fid = fidLookup.getFid(verifier);
-        (rank, score) = _getRankAndScoreForFID(fid);
-    }
-
-    function getFIDsRanksAndScoresForVerifiers(address[] calldata verifiers)
-        external
-        view
-        returns (uint256[] memory fids, uint256[] memory ranks, uint256[] memory scores)
-    {
-        fids = fidLookup.getFids(verifiers);
-        (ranks, scores) = _getRanksAndScoresForFIDs(fids);
-    }
 
     // --- END impl IFarcasterOpenRank ---
 
