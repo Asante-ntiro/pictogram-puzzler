@@ -37,4 +37,16 @@ yarn-error.log*
 next-env.d.ts
 
 # contracts
-/contracts
+*/script/DeployOnChainScores.s.sol
+*/src/OnChainScores.sol
+*/src/IFarcasterScores.sol
+*/src/IVerificationsV4Reader.sol
+
+# Foundry libraries (prevent nested git repo issues)
+contracts/lib/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# notes
+ONCHAIN_SCORES_STRATEGY.md
