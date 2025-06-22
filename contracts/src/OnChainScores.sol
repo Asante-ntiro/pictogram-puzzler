@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IFarcasterOpenRank} from "./IFarcasterOpenRank.sol";
 
 
-/// @title Global Farcaster OpenkRank scores
+/// @title Global Farcaster OpenkRank scores & Pictogram Puzzler game scores
 contract OnChainScores is IFarcasterOpenRank, Ownable {
     // --- BEGIN state variables ---
 
@@ -16,6 +16,40 @@ contract OnChainScores is IFarcasterOpenRank, Ownable {
     /// @dev Invariant: an FID exists in fidRank iff it also appears in leaderboard.
     /// Rank values stored here are 1-based; 0 means fid not found.
     mapping(uint256 => uint256) public fidRank;
+
+    // --- Game specific state variables ---
+    
+    /// @notice Structure to hold player game score details
+    struct PlayerScore {
+        uint256 score;
+        string difficulty;  // "easy" or "hard"
+        uint256 timestamp;
+        uint256 puzzlesSolved;
+        uint256 streak;
+    }
+    
+    /// @notice Mapping from player address to their game score data
+    mapping(address => PlayerScore) public playerScores;
+    
+    /// @notice Mapping from player address to their historical scores
+    mapping(address => PlayerScore[]) public playerScoreHistory;
+    
+    /// @notice Top game players leaderboard
+    address[] public gameLeaderboard;
+    
+    /// @notice Mapping from player address to their position in the game leaderboard
+    mapping(address => uint256) public playerGameRank;
+    
+    /// @notice Cooldown period between score submissions (in seconds)
+    uint256 public scoreCooldown = 60; // 1 minute default
+    
+    // --- Events ---
+    
+    /// @notice Emitted when a game score is recorded
+    event GameScoreRecorded(address indexed player, uint256 score, string difficulty, uint256 puzzlesSolved, uint256 streak);
+    
+    /// @notice Emitted when cooldown period is updated
+    event CooldownUpdated(uint256 newCooldown);
 
     // --- END state variables ---
 
@@ -129,8 +163,87 @@ contract OnChainScores is IFarcasterOpenRank, Ownable {
         }
     }
 
-
     // --- END impl IFarcasterOpenRank ---
+
+    // --- BEGIN Pictogram Puzzler game functions ---
+    
+    /// @notice Submit a new game score
+    /// @param score The player's score
+    /// @param difficulty The game difficulty ("easy" or "hard")
+    /// @param puzzlesSolved Number of puzzles solved
+    /// @param streak Current streak
+    function submitGameScore(uint256 score, string calldata difficulty, uint256 puzzlesSolved, uint256 streak) external {
+        // Check if player is on cooldown
+        if (playerScoreHistory[msg.sender].length > 0) {
+            PlayerScore memory lastSubmission = playerScoreHistory[msg.sender][playerScoreHistory[msg.sender].length - 1];
+            require(block.timestamp >= lastSubmission.timestamp + scoreCooldown, "Score submission on cooldown");
+        }
+        
+        // Create new score record
+        PlayerScore memory newScore = PlayerScore({
+            score: score,
+            difficulty: difficulty,
+            timestamp: block.timestamp,
+            puzzlesSolved: puzzlesSolved,
+            streak: streak
+        });
+        
+        // Add to history
+        playerScoreHistory[msg.sender].push(newScore);
+        
+        // Update current score
+        playerScores[msg.sender] = newScore;
+        
+        // Update game leaderboard (simplified - a production implementation would sort by score)
+        if (playerGameRank[msg.sender] == 0) {
+            gameLeaderboard.push(msg.sender);
+            playerGameRank[msg.sender] = gameLeaderboard.length;
+        }
+        
+        // Emit event
+        emit GameScoreRecorded(msg.sender, score, difficulty, puzzlesSolved, streak);
+    }
+    
+    /// @notice Get a player's highest score
+    /// @param player The player's address
+    /// @return The player's highest score
+    function getPlayerScore(address player) external view returns (PlayerScore memory) {
+        return playerScores[player];
+    }
+    
+    /// @notice Get a player's score history
+    /// @param player The player's address
+    /// @return An array of the player's historical scores
+    function getPlayerScoreHistory(address player) external view returns (PlayerScore[] memory) {
+        return playerScoreHistory[player];
+    }
+    
+    /// @notice Get top players by score
+    /// @param count Number of top players to return
+    /// @return addresses Player addresses
+    /// @return scores Player scores
+    function getTopPlayers(uint256 count) external view returns (address[] memory addresses, uint256[] memory scores) {
+        uint256 length = gameLeaderboard.length;
+        if (count > length) {
+            count = length;
+        }
+        
+        addresses = new address[](count);
+        scores = new uint256[](count);
+        
+        // Simple implementation - in production we should maintain a sorted list
+        for (uint256 i = 0; i < count; i++) {
+            addresses[i] = gameLeaderboard[i];
+            scores[i] = playerScores[gameLeaderboard[i]].score;
+        }
+    }
+    
+    /// @notice Set the cooldown period between score submissions
+    /// @param newCooldown New cooldown in seconds
+    function setScoreCooldown(uint256 newCooldown) external onlyOwner {
+        scoreCooldown = newCooldown;
+        emit CooldownUpdated(newCooldown);
+    }
 
     /// @notice Health check.  Used to check for installation.
     function healthCheck(uint256 nonce) public pure returns (uint256) {

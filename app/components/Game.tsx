@@ -3,19 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
-import {
-  Name,
-  Identity,
-  Address,
-  Avatar,
-  EthBalance,
-} from "@coinbase/onchainkit/identity";
-import {
-  ConnectWallet,
-  Wallet,
-  WalletDropdown,
-  WalletDropdownDisconnect,
-} from "@coinbase/onchainkit/wallet";
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { injected } from '@wagmi/connectors'
+import ContractService from "../services/ContractService";
 
 const Confetti = dynamic(() => import("react-confetti"), {
   ssr: false,
@@ -455,6 +445,24 @@ type ScoreCardProps = {
 };
 
 export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }: ScoreCardProps) {
+  // Get current difficulty from local storage or default to 'easy'
+  const [difficulty, setDifficulty] = useState<string>('easy');
+  // Get shownMovies from local storage or initialize as empty array
+  const [shownMovies, setShownMovies] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedDifficulty = localStorage.getItem('pictogramPuzzlerDifficulty');
+      if (storedDifficulty) {
+        setDifficulty(storedDifficulty);
+      }
+      
+      const storedMovies = localStorage.getItem('pictogramPuzzlerShownMovies');
+      if (storedMovies) {
+        setShownMovies(JSON.parse(storedMovies));
+      }
+    }
+  }, []);
   return (
     <div className="space-y-6 animate-fade-in">
       <Card title="Your Stats 🏆">
@@ -492,28 +500,189 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }:
                 Reset Game Progress
               </Button>
             )}
-            <span className="text-[var(--app-foreground-muted)]">📊 Connect your wallet to save your score on-chain!</span>
+            <span className="text-[var(--app-foreground-muted)]">🏆 Connect your wallet to mint your achievement as an NFT!</span>
             <div>
-            <div className="flex items-center space-x-2">
-              <Wallet className="z-10">
-                <ConnectWallet>
-                  <Name className="text-inherit" />
-                </ConnectWallet>
-                <WalletDropdown>
-                  <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                    <Avatar />
-                    <Name />
-                    <Address />
-                    <EthBalance />
-                  </Identity>
-                  <WalletDropdownDisconnect />
-                </WalletDropdown>
-              </Wallet>
+              <WalletConnectButton score={score} difficulty={difficulty} puzzlesSolved={shownMovies.length} streak={streak} />
             </div>
-          </div>
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// WalletConnectButton component with wagmi hooks
+type WalletConnectButtonProps = {
+  score: number;
+  difficulty: string;
+  puzzlesSolved: number;
+  streak: number;
+};
+
+type Achievement = {
+  tokenId: bigint;
+  score: bigint;
+  difficulty: string;
+  puzzlesSolved: bigint;
+  streak: bigint;
+  timestamp: bigint;
+  tier: number;
+};
+
+function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: WalletConnectButtonProps) {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mintSuccess, setMintSuccess] = useState(false);
+  const [mintError, setMintError] = useState('');
+  const [ownedAchievements, setOwnedAchievements] = useState<Achievement[]>([]);
+  const [showAchievements, setShowAchievements] = useState(false);
+  // Create a new instance of ContractService
+  const contractService = ContractService.getInstance();
+
+  // Fetch owned achievements whenever the address changes or after successful mint
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchOwnedAchievements();
+    }
+  }, [isConnected, address, mintSuccess]);
+
+  // Fetch user's NFT achievements
+  const fetchOwnedAchievements = async () => {
+    if (!isConnected) return;
+    
+    try {
+      await contractService.connect();
+      const achievements = await contractService.getOwnedAchievements();
+      setOwnedAchievements(achievements);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+    }
+  };
+
+  // Mint NFT achievement based on game score
+  const mintAchievement = async () => {
+    if (!isConnected) return;
+    
+    try {
+      setIsSubmitting(true);
+      setMintError('');
+      
+      // Initialize the contract service
+      await contractService.connect();
+      
+      // Mint achievement NFT based on game score
+      const result = await contractService.mintAchievement(score, difficulty, puzzlesSolved, streak);
+      
+      if (result.success) {
+        setMintSuccess(true);
+        // Fetch updated achievements
+        await fetchOwnedAchievements();
+        setShowAchievements(true);
+      } else {
+        setMintError(result.error || 'Failed to mint achievement NFT. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error minting achievement:', error);
+      setMintError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Get tier name from tier number
+  const getTierName = (tier: number): string => {
+    switch (tier) {
+      case 1: return "Bronze";
+      case 2: return "Silver";
+      case 3: return "Gold";
+      default: return "Unknown";
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      {!isConnected ? (
+        <Button 
+          variant="primary" 
+          onClick={() => connect({ connector: injected() })}
+          className="w-full"
+        >
+          Connect Wallet
+        </Button>
+      ) : (
+        <div className="flex flex-col items-center space-y-3 w-full">
+          <div className="flex items-center justify-between w-full bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-md">
+            <span className="truncate max-w-[150px]">
+              {address?.slice(0, 6)}...{address?.slice(-4)}
+            </span>
+            <Button 
+              variant="secondary" 
+              onClick={() => disconnect()}
+              className="text-sm"
+            >
+              Disconnect
+            </Button>
+          </div>
+          
+          {!mintSuccess ? (
+            <Button 
+              variant="primary" 
+              onClick={mintAchievement} 
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              {isSubmitting ? 'Minting...' : 'Mint Achievement NFT'}
+            </Button>
+          ) : (
+            <div className="text-green-500 font-medium text-center">
+              Achievement NFT minted successfully! 🎉
+              <Button
+                variant="secondary"
+                onClick={() => setShowAchievements(!showAchievements)}
+                className="mt-2 w-full"
+              >
+                {showAchievements ? 'Hide' : 'Show'} My Achievements
+              </Button>
+            </div>
+          )}
+          
+          {mintError && (
+            <div className="text-red-500 text-sm">
+              {mintError}
+            </div>
+          )}
+
+          {showAchievements && ownedAchievements.length > 0 && (
+            <div className="w-full mt-4 space-y-3">
+              <h3 className="font-bold text-center">Your Achievements</h3>
+              <div className="space-y-2">
+                {ownedAchievements.map((achievement) => (
+                  <div key={achievement.tokenId.toString()} className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                    <div className="font-semibold">
+                      {getTierName(achievement.tier)} Achievement #{achievement.tokenId.toString()}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div>Score: {achievement.score.toString()}</div>
+                      <div>Difficulty: {achievement.difficulty}</div>
+                      <div>Puzzles Solved: {achievement.puzzlesSolved.toString()}</div>
+                      <div>Streak: {achievement.streak.toString()}</div>
+                      <div>Date: {new Date(Number(achievement.timestamp) * 1000).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showAchievements && ownedAchievements.length === 0 && (
+            <div className="text-center text-gray-500">
+              You don't have any achievement NFTs yet.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
