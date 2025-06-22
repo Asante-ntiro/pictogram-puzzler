@@ -124,16 +124,6 @@ export function Home({ setActiveTab }: HomeProps) {
             Hard Mode
           </Button>
         </div>
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            onClick={() => setActiveTab("test")}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            🧪 Test Contract Integration
-          </Button>
-        </div>
       </Card>
     </div>
   );

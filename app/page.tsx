@@ -24,7 +24,6 @@ import { Icon } from "./components/DemoComponents";
 import { Home } from "./components/DemoComponents";
 import { Game } from "./components/Game";
 import {ScoreCard} from "./components/Game";
-import ContractTestPanel from "./components/ContractTestPanel";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
@@ -171,7 +170,6 @@ export default function App() {
                 setStreak(0);
               }} 
             />}
-          {activeTab === "test" && <ContractTestPanel />}
         </main>
 
         <footer className="mt-2 pt-4 flex justify-center">
