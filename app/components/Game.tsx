@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from '@wagmi/connectors'
+import { injected } from 'wagmi/connectors'; // Fix import path
 import ContractService from "../services/ContractService";
 
 const Confetti = dynamic(() => import("react-confetti"), {
@@ -531,7 +531,7 @@ type Achievement = {
 
 function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: WalletConnectButtonProps) {
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
@@ -540,6 +540,45 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   const [showAchievements, setShowAchievements] = useState(false);
   // Create a new instance of ContractService
   const contractService = ContractService.getInstance();
+
+  // Function to handle wallet connection with multiple connectors
+  const handleConnect = async () => {
+    try {
+      // Check if we're in a Farcaster environment
+      const isFarcaster = typeof window !== 'undefined' && 
+        (window.parent !== window || navigator.userAgent.includes('Farcaster'));
+      
+      // Try to find Farcaster-specific connector first
+      const farcasterConnector = connectors.find(connector => 
+        connector.name.toLowerCase().includes('farcaster')
+      );
+      
+      if (isFarcaster && farcasterConnector) {
+        console.log('Connecting with Farcaster connector');
+        await connect({ connector: farcasterConnector });
+        return;
+      }
+      
+      // Fallback to first available injected connector
+      const injectedConnector = connectors.find(connector => 
+        connector.type === 'injected' || connector.name.toLowerCase().includes('injected')
+      );
+      
+      if (injectedConnector) {
+        console.log('Connecting with injected connector:', injectedConnector.name);
+        await connect({ connector: injectedConnector });
+        return;
+      }
+      
+      // If no specific connector found, use the first available
+      if (connectors.length > 0) {
+        console.log('Connecting with first available connector:', connectors[0].name);
+        await connect({ connector: connectors[0] });
+      }
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+    }
+  };
 
   // Fetch owned achievements whenever the address changes or after successful mint
   useEffect(() => {
@@ -553,7 +592,13 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
     if (!isConnected) return;
     
     try {
-      await contractService.connect();
+      // Check if ContractService is connected to wagmi's clients
+      const contractConnected = await contractService.isConnected();
+      if (!contractConnected) {
+        console.log('ContractService not connected to wagmi clients');
+        return;
+      }
+      
       const achievements = await contractService.getOwnedAchievements();
       setOwnedAchievements(achievements);
     } catch (error) {
@@ -568,9 +613,6 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
     try {
       setIsSubmitting(true);
       setMintError('');
-      
-      // Initialize the contract service
-      await contractService.connect();
       
       // Mint achievement NFT based on game score
       const result = await contractService.mintAchievement(score, difficulty, puzzlesSolved, streak);
@@ -606,7 +648,7 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
       {!isConnected ? (
         <Button 
           variant="primary" 
-          onClick={() => connect({ connector: injected() })}
+          onClick={handleConnect}
           className="w-full"
         >
           Connect Wallet
