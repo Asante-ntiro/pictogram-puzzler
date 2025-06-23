@@ -71,16 +71,16 @@ type GuessInputProps = {
 
 // Data
 const movies: Movie[] = [
-  // { emojis: "🦁👑", answer: "The Lion King", hint: "Disney animated classic about a young prince", difficulty: 'easy' },
-  // { emojis: "🕷️👨", answer: "Spider-Man", hint: "Marvel superhero who shoots webs", difficulty: 'easy' },
-  // { emojis: "❄️👸", answer: "Frozen", hint: "Let it go, let it go...", difficulty: 'easy' },
-  // { emojis: "🍕🏠", answer: "Home Alone", hint: "Kevin defends his house", difficulty: 'easy' },
-  // { emojis: "🚢🧊💔", answer: "Titanic", hint: "Jack and Rose's tragic love story", difficulty: 'easy' },
+  { emojis: "🦁👑", answer: "The Lion King", hint: "Disney animated classic about a young prince", difficulty: 'easy' },
+  { emojis: "🕷️👨", answer: "Spider-Man", hint: "Marvel superhero who shoots webs", difficulty: 'easy' },
+  { emojis: "❄️👸", answer: "Frozen", hint: "Let it go, let it go...", difficulty: 'easy' },
+  { emojis: "🍕🏠", answer: "Home Alone", hint: "Kevin defends his house", difficulty: 'easy' },
+  { emojis: "🚢🧊💔", answer: "Titanic", hint: "Jack and Rose's tragic love story", difficulty: 'easy' },
   { emojis: "🦈", answer: "Jaws", hint: "You're gonna need a bigger boat", difficulty: 'easy' },
-  // { emojis: "🧙‍♂️💍", answer: "Lord of the Rings", hint: "One ring to rule them all", difficulty: 'easy' },
+  { emojis: "🧙‍♂️💍", answer: "Lord of the Rings", hint: "One ring to rule them all", difficulty: 'easy' },
   { emojis: "🤖🚗", answer: "Transformers", hint: "Robots in disguise", difficulty: 'easy' },
   { emojis: "👻👻👻", answer: "Ghostbusters", hint: "Who you gonna call?", difficulty: 'easy' },
-  // { emojis: "🎪🐘", answer: "Dumbo", hint: "Flying elephant with big ears", difficulty: 'easy' },
+  { emojis: "🎪🐘", answer: "Dumbo", hint: "Flying elephant with big ears", difficulty: 'easy' },
 
   { emojis: "🔴💊🐰🕳️", answer: "The Matrix", hint: "Red pill or blue pill?", difficulty:'hard' },
   { emojis: "🧠🐑🍷", answer: "Silence of the Lambs", hint: "A young FBI trainee seeks help from Hannibal Lecter", difficulty:'hard' },
