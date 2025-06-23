@@ -248,7 +248,7 @@ export function Game({
   const [hintsUsed, setHintsUsed] = useState(0);
   const [currentPuzzle, setCurrentPuzzle] = useState<Movie | null>(null);
   const [guess, setGuess] = useState("");
-  const [feedback, setFeedback] = useState("Guess the movie from the emojis!");
+  const [feedback, setFeedback] = useState("Guess the movie from the pictogram. You have 6 attempts. You&apos;ll get a score based on how many attempts it takes and how many hints you use.");
   const [isGameActive, setIsGameActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
@@ -678,7 +678,7 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
 
           {showAchievements && ownedAchievements.length === 0 && (
             <div className="text-center text-gray-500">
-              You don't have any achievement NFTs yet.
+              You don&apos;t have any achievement NFTs yet.
             </div>
           )}
         </div>
