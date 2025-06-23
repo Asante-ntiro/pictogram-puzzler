@@ -16,6 +16,14 @@ export const config = createConfig({
     injected({
       // Disable shimDisconnect to prevent external API calls that violate Farcaster CSP
       shimDisconnect: false,
+      // Target specific providers for better Farcaster compatibility
+      target() {
+        return {
+          id: 'farcaster-injected',
+          name: 'Farcaster Wallet',
+          provider: typeof window !== 'undefined' ? window.ethereum : undefined,
+        };
+      },
     }),
   ],
   transports: {
@@ -27,6 +35,8 @@ export const config = createConfig({
   },
   // Set a minimal cache time to reduce background requests
   cacheTime: 0,
+  // Add SSR support for better compatibility
+  ssr: true,
 });
 
 // Create clients that can be used outside of React components

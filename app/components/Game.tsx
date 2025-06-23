@@ -329,7 +329,7 @@ export function Game({
       }, 2000);
       // Award more points for hard difficulty
       const difficultyBonus = difficulty === 'hard' ? 2 : 1;
-      const pointsToAdd = (hintsUsed === 0 ? 10 : 5) * difficultyBonus;
+      const pointsToAdd = (hintsUsed === 0 ? 100 : 50) * difficultyBonus;
       setScore(score + pointsToAdd);
       setStreak(streak + 1);
       setIsGameActive(false);
@@ -541,55 +541,61 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   // Create a new instance of ContractService
   const contractService = ContractService.getInstance();
 
+  // Debug connection state changes
+  useEffect(() => {
+    console.log('Wagmi connection state changed:', {
+      isConnected,
+      address,
+      hasAddress: !!address,
+      timestamp: new Date().toISOString()
+    });
+  }, [isConnected, address]);
+
   // Function to handle wallet connection with multiple connectors
   const handleConnect = async () => {
     try {
+      console.log('Available connectors:', connectors.map(c => ({ name: c.name, type: c.type, id: c.id })));
+      
       // Check if we're in a Farcaster environment
       const isFarcaster = typeof window !== 'undefined' && 
         (window.parent !== window || navigator.userAgent.includes('Farcaster'));
       
-      // Try to find Farcaster-specific connector first
-      const farcasterConnector = connectors.find(connector => 
-        connector.name.toLowerCase().includes('farcaster')
-      );
+      console.log('Environment check:', { isFarcaster, userAgent: navigator.userAgent });
       
-      if (isFarcaster && farcasterConnector) {
-        console.log('Connecting with Farcaster connector');
-        await connect({ connector: farcasterConnector });
-        return;
-      }
-      
-      // Fallback to first available injected connector
+      // In Farcaster, we should use the injected connector (which should detect Farcaster's wallet)
       const injectedConnector = connectors.find(connector => 
         connector.type === 'injected' || connector.name.toLowerCase().includes('injected')
       );
       
       if (injectedConnector) {
-        console.log('Connecting with injected connector:', injectedConnector.name);
+        console.log('Connecting with injected connector:', {
+          name: injectedConnector.name,
+          type: injectedConnector.type,
+          id: injectedConnector.id
+        });
         await connect({ connector: injectedConnector });
         return;
       }
       
-      // If no specific connector found, use the first available
+      // If no injected connector found, use the first available
       if (connectors.length > 0) {
-        console.log('Connecting with first available connector:', connectors[0].name);
+        console.log('Connecting with first available connector:', {
+          name: connectors[0].name,
+          type: connectors[0].type,
+          id: connectors[0].id
+        });
         await connect({ connector: connectors[0] });
+      } else {
+        console.error('No connectors available');
       }
     } catch (error) {
       console.error('Wallet connection error:', error);
     }
   };
 
-  // Fetch owned achievements whenever the address changes or after successful mint
-  useEffect(() => {
-    if (isConnected && address) {
-      fetchOwnedAchievements();
-    }
-  }, [isConnected, address, mintSuccess]);
-
   // Fetch user's NFT achievements
   const fetchOwnedAchievements = async () => {
-    if (!isConnected) return;
+    if (!isConnected || !address) return;
     
     try {
       // Check if ContractService is connected to wagmi's clients
@@ -606,16 +612,28 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
     }
   };
 
+  // Fetch user's NFT achievements whenever the address changes or after successful mint
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchOwnedAchievements();
+    }
+  }, [isConnected, address, mintSuccess]);
+
   // Mint NFT achievement based on game score
   const mintAchievement = async () => {
-    if (!isConnected) return;
+    if (!isConnected || !address) return;
     
     try {
       setIsSubmitting(true);
       setMintError('');
       
-      // Mint achievement NFT based on game score
-      const result = await contractService.mintAchievement(score, difficulty, puzzlesSolved, streak);
+      // Mint achievement NFT based on game score, passing account info
+      const result = await contractService.mintAchievement(
+        score, 
+        difficulty, 
+        puzzlesSolved, 
+        streak
+      );
       
       if (result.success) {
         setMintSuccess(true);
