@@ -1,16 +1,5 @@
-import {
-  Address,
-  PublicClient,
-  WalletClient,
-  getContract,
-  http,
-  custom,
-  createPublicClient,
-  createWalletClient
-} from 'viem';
-import { celoAlfajores } from 'wagmi/chains';
-import { config, createClients } from '../config/wagmi';
-import { getPublicClient, getWalletClient, getAccount } from '@wagmi/core';
+import { getAccount, getPublicClient, getWalletClient } from '@wagmi/core';
+import { config } from '../config/wagmi';
 
 // Define the ABI for the PictogramAchievement contract
 export const PictogramAchievementABI = [
@@ -112,7 +101,6 @@ export interface Achievement {
 // Export the class with getInstance method
 export default class ContractService {
   private static instance: ContractService | null = null;
-  private chain = celoAlfajores;
 
   // Score thresholds for different tiers
   static readonly BRONZE_THRESHOLD = 50;
@@ -129,226 +117,61 @@ export default class ContractService {
   }
 
   // Ensure wallet connection and authorization
-  private async ensureWalletConnection(): Promise<{
-    walletClient: WalletClient;
-    publicClient: PublicClient;
-    account: Address;
-  } | null> {
-    try {
-      console.log('ContractService: Ensuring wallet connection...');
-      
-      // Request wallet connection if not already connected
-      if (typeof window !== 'undefined' && window.ethereum) {
-        try {
-          // Request account access - this is crucial for authorization
-          const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-          });
-          console.log('ContractService: Accounts from eth_requestAccounts:', accounts);
-        } catch (requestError) {
-          console.error('ContractService: User denied account access:', requestError);
-          return null;
-        }
-      }
-
-      // Get wagmi account
-      const account = getAccount(config);
-      console.log('ContractService: Wagmi account:', {
-        address: account.address,
-        isConnected: account.isConnected,
-        status: account.status,
-        connector: account.connector?.name
-      });
-
-      if (!account.isConnected || !account.address) {
-        console.error('ContractService: Wallet not connected via wagmi');
-        return null;
-      }
-
-      // Get clients
-      const publicClient = await this.getPublicClient();
-      const walletClient = await getWalletClient(config);
-
-      console.log('ContractService: Clients retrieved:', {
-        hasPublicClient: !!publicClient,
-        hasWalletClient: !!walletClient,
-        walletClientAccount: walletClient?.account?.address,
-        accountMatch: walletClient?.account?.address === account.address
-      });
-
-      if (!publicClient || !walletClient) {
-        console.error('ContractService: Failed to get clients');
-        return null;
-      }
-
-      // Ensure the wallet client account matches the connected account
-      if (walletClient.account?.address !== account.address) {
-        console.error('ContractService: Account mismatch between wallet client and wagmi');
-        return null;
-      }
-
-      return {
-        walletClient,
-        publicClient,
-        account: account.address as Address
-      };
-    } catch (error) {
-      console.error('ContractService: Error ensuring wallet connection:', error);
-      return null;
-    }
-  }
-
-  // Get wagmi's connected public client
-  private async getPublicClient(): Promise<PublicClient | null> {
-    try {
-      console.log('ContractService: Getting public client from wagmi config');
-      const client = getPublicClient(config);
-      
-      if (!client) {
-        console.log('ContractService: Wagmi public client is null, trying fallback...');
-        const { publicClient } = createClients();
-        return publicClient as PublicClient | null;
-      }
-      
-      return client as PublicClient | null;
-    } catch (error) {
-      console.error('ContractService: Failed to get public client:', error);
-      try {
-        const { publicClient } = createClients();
-        return publicClient as PublicClient | null;
-      } catch (fallbackError) {
-        console.error('ContractService: Fallback public client also failed:', fallbackError);
-        return null;
-      }
-    }
-  }
-
-  // Check if the wallet is connected
-  async isConnected(): Promise<boolean> {
-    console.log('ContractService: Checking connection status...');
-    const connection = await this.ensureWalletConnection();
-    const isConnected = !!connection;
-    console.log('ContractService: Final connection status:', isConnected);
-    return isConnected;
+  async isConnected(accountOverride?: string): Promise<boolean> {
+    const account = getAccount(config);
+    return !!accountOverride || !!account.address;
   }
 
   // Mint an achievement NFT based on game performance
-  async mintAchievement(
-    score: number, 
-    difficulty: string, 
-    puzzlesSolved: number, 
-    streak: number
-  ): Promise<{ success: boolean; error?: string; txHash?: string }> {
+  async mintAchievement(score: number, difficulty: string, puzzlesSolved: number, streak: number, accountOverride?: string) {
+    const walletClient = await getWalletClient(config);
+    if (!walletClient) throw new Error('Wallet not connected');
+    
+    const account = (accountOverride || walletClient.account.address) as `0x${string}`;
+    
     try {
-      console.log('ContractService: Starting achievement mint...', { score, difficulty, puzzlesSolved, streak });
+      const publicClient = getPublicClient(config);
+      if (!publicClient) throw new Error('Public client not initialized');
       
-      // Ensure proper wallet connection and authorization
-      const connection = await this.ensureWalletConnection();
-      if (!connection) {
-        return { 
-          success: false, 
-          error: "Please connect your wallet and try again. Make sure to approve the connection request." 
-        };
-      }
-
-      const { walletClient, publicClient, account } = connection;
-
-      // Check if score meets minimum threshold
-      if (score < ContractService.BRONZE_THRESHOLD) {
-        console.error("Score too low to earn an achievement NFT");
-        return { 
-          success: false, 
-          error: `Score too low! You need at least ${ContractService.BRONZE_THRESHOLD} points to earn a Bronze achievement. Keep playing to improve your score!` 
-        };
-      }
-
-      console.log('ContractService: Preparing transaction with account:', account);
+      // First simulate the contract call
+      const { request } = await publicClient.simulateContract({
+        address: CONTRACT_ADDRESS,
+        abi: PictogramAchievementABI,
+        functionName: 'mintAchievement',
+        args: [account, BigInt(score), difficulty, BigInt(puzzlesSolved), BigInt(streak)],
+        account: walletClient.account
+      });
       
-      try {
-        // First simulate the contract call to catch any issues
-        const simulationResult = await publicClient.simulateContract({
-          address: CONTRACT_ADDRESS,
-          abi: PictogramAchievementABI,
-          functionName: 'mintAchievement',
-          args: [
-            account,
-            BigInt(score), 
-            difficulty, 
-            BigInt(puzzlesSolved), 
-            BigInt(streak)
-          ],
-          account: account,
-        });
-        
-        console.log('ContractService: Simulation successful, sending transaction...');
-        
-        // Send the transaction using the wallet client
-        const hash = await walletClient.writeContract(simulationResult.request);
-        
-        console.log('ContractService: Transaction sent with hash:', hash);
-        
-        // Wait for transaction receipt
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        
-        console.log('ContractService: Transaction confirmed:', receipt);
-        
-        return { success: true, txHash: hash };
-      } catch (contractError: any) {
-        console.error("ContractService: Contract interaction error:", contractError);
-        
-        // Handle specific error types
-        if (contractError.message?.includes('User rejected') || contractError.code === 4001) {
-          return { 
-            success: false, 
-            error: "Transaction was rejected. Please try again and approve the transaction in your wallet." 
-          };
-        }
-        
-        if (contractError.message?.includes('unauthorized') || contractError.message?.includes('not been authorized')) {
-          return { 
-            success: false, 
-            error: "Wallet authorization failed. Please disconnect and reconnect your wallet, then try again." 
-          };
-        }
-        
-        return { 
-          success: false, 
-          error: contractError.message || "Failed to mint achievement NFT. Please try again." 
-        };
-      }
-    } catch (error: any) {
-      console.error("ContractService: General error minting achievement NFT:", error);
-      return { 
-        success: false, 
-        error: error.message || "An unexpected error occurred. Please try again." 
-      };
+      // Send the transaction
+      const hash = await walletClient.writeContract(request);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      
+      return { success: true, txHash: hash };
+    } catch (error) {
+      console.error('Mint error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Minting failed' };
     }
   }
 
   // Get all NFTs owned by the current account
-  async getOwnedAchievements(): Promise<Achievement[]> {
-    const connection = await this.ensureWalletConnection();
-    if (!connection) {
-      console.error("Wallet not connected");
-      return [];
-    }
-
-    const { publicClient, account } = connection;
+  async getOwnedAchievements(accountOverride?: string): Promise<Achievement[]> {
+    const publicClient = getPublicClient(config);
+    if (!publicClient) throw new Error('Public client not initialized');
+    
+    const account = (accountOverride || getAccount(config).address) as `0x${string}`;
+    if (!account) return [];
 
     try {
-      // Get the balance of NFTs owned by the account
       const balance = await publicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: PictogramAchievementABI,
         functionName: 'balanceOf',
         args: [account]
       }) as bigint;
-      
+
       const achievements: Achievement[] = [];
       
-      // For each token, get the token ID and achievement data
       for (let i = 0; i < Number(balance); i++) {
-        // Get token ID at index
         const tokenId = await publicClient.readContract({
           address: CONTRACT_ADDRESS,
           abi: PictogramAchievementABI,
@@ -356,76 +179,62 @@ export default class ContractService {
           args: [account, BigInt(i)]
         }) as bigint;
         
-        // Get achievement data
-        const achievement = await publicClient.readContract({
+        const achievementData = await publicClient.readContract({
           address: CONTRACT_ADDRESS,
           abi: PictogramAchievementABI,
           functionName: 'achievements',
           args: [tokenId]
-        }) as any;
-        
+        }) as readonly [bigint, string, bigint, bigint, bigint, number];
+
         achievements.push({
           tokenId,
-          score: achievement.score,
-          difficulty: achievement.difficulty,
-          puzzlesSolved: achievement.puzzlesSolved,
-          streak: achievement.streak,
-          timestamp: achievement.timestamp,
-          tier: achievement.tier
+          score: achievementData[0],
+          difficulty: achievementData[1],
+          puzzlesSolved: achievementData[2],
+          streak: achievementData[3],
+          timestamp: achievementData[4],
+          tier: achievementData[5]
         });
       }
       
       return achievements;
     } catch (error) {
-      console.error("Error getting owned achievements:", error);
+      console.error('Error getting achievements:', error);
       return [];
     }
   }
 
   // Get token URI for an NFT (for metadata and image display)
-  async getTokenURI(tokenId: bigint): Promise<string | null> {
-    const connection = await this.ensureWalletConnection();
-    if (!connection) {
-      console.error("Wallet not connected");
-      return null;
-    }
-
-    const { publicClient } = connection;
+  async getTokenURI(tokenId: bigint, accountOverride?: string): Promise<string | null> {
+    const publicClient = getPublicClient(config);
+    if (!publicClient) return null;
 
     try {
-      const tokenURI = await publicClient.readContract({
+      return await publicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: PictogramAchievementABI,
         functionName: 'tokenURI',
         args: [tokenId]
       }) as string;
-      
-      return tokenURI;
     } catch (error) {
-      console.error("Error getting token URI:", error);
+      console.error('Error getting token URI:', error);
       return null;
     }
   }
 
   // Get total supply of NFTs
   async getTotalSupply(): Promise<bigint> {
-    const publicClient = await this.getPublicClient();
-    
-    if (!publicClient) {
-      console.error("Client not initialized");
-      return BigInt(0);
-    }
+    const publicClient = getPublicClient(config);
+    if (!publicClient) return BigInt(0);
 
     try {
-      const totalSupply = await publicClient.readContract({
+      return await publicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: PictogramAchievementABI,
         functionName: 'totalSupply'
       }) as bigint;
-      
-      return totalSupply;
     } catch (error) {
-      console.error("Error getting total supply:", error);
+      console.error('Error getting total supply:', error);
       return BigInt(0);
     }
   }
