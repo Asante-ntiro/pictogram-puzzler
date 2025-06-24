@@ -1,5 +1,12 @@
 import { getAccount, getPublicClient, getWalletClient } from '@wagmi/core';
-import { config } from '../config/wagmi';
+import {
+  useAccount,
+  useWriteContract,
+  useConnect,
+  useSwitchChain,
+  useSendTransaction,
+  usePublicClient,
+} from "wagmi";
 
 // Define the ABI for the PictogramAchievement contract
 export const PictogramAchievementABI = [

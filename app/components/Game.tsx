@@ -3,9 +3,14 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors'; // Fix import path
+import { useAccount, useConnect, useDisconnect, usePublicClient, useWriteContract } from 'wagmi';
+import { simulateContract, getWalletClient, getPublicClient } from '@wagmi/core'
 import ContractService from "../services/ContractService";
+import { PictogramAchievementABI } from "../services/contracts";
+
+// Remove later
+const CONTRACT_ADDRESS = '0xC597FCf9C877943775bE9bb7EEf83DbBEd88A650' as const;
+
 
 const Confetti = dynamic(() => import("react-confetti"), {
   ssr: false,
@@ -533,13 +538,15 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const publicClient = usePublicClient();
+  
+  // Use wagmi's useWriteContract hook
+  const { writeContract, isPending } = useWriteContract();
+  
   const [mintSuccess, setMintSuccess] = useState(false);
   const [mintError, setMintError] = useState('');
   const [ownedAchievements, setOwnedAchievements] = useState<Achievement[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
-  // Create a new instance of ContractService
-  const contractService = ContractService.getInstance();
 
   // Debug connection state changes
   useEffect(() => {
@@ -554,30 +561,6 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   // Function to handle wallet connection with multiple connectors
   const handleConnect = async () => {
     try {
-      console.log('Available connectors:', connectors.map(c => ({ name: c.name, type: c.type, id: c.id })));
-      
-      // Check if we're in a Farcaster environment
-      const isFarcaster = typeof window !== 'undefined' && 
-        (window.parent !== window || navigator.userAgent.includes('Farcaster'));
-      
-      console.log('Environment check:', { isFarcaster, userAgent: navigator.userAgent });
-      
-      // In Farcaster, we should use the injected connector (which should detect Farcaster's wallet)
-      const injectedConnector = connectors.find(connector => 
-        connector.type === 'injected' || connector.name.toLowerCase().includes('injected')
-      );
-      
-      if (injectedConnector) {
-        console.log('Connecting with injected connector:', {
-          name: injectedConnector.name,
-          type: injectedConnector.type,
-          id: injectedConnector.id
-        });
-        await connect({ connector: injectedConnector });
-        return;
-      }
-      
-      // If no injected connector found, use the first available
       if (connectors.length > 0) {
         console.log('Connecting with first available connector:', {
           name: connectors[0].name,
@@ -595,17 +578,44 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
 
   // Fetch user's NFT achievements
   const fetchOwnedAchievements = async () => {
-    if (!isConnected || !address) return;
+    if (!isConnected || !address || !publicClient) return;
     
     try {
-      // Check if ContractService is connected to wagmi's clients
-      const contractConnected = await contractService.isConnected();
-      if (!contractConnected) {
-        console.log('ContractService not connected to wagmi clients');
-        return;
+      const balance = await publicClient.readContract({
+        address: CONTRACT_ADDRESS,
+        abi: PictogramAchievementABI,
+        functionName: 'balanceOf',
+        args: [address]
+      }) as bigint;
+
+      const achievements: Achievement[] = [];
+      
+      for (let i = 0; i < Number(balance); i++) {
+        const tokenId = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: PictogramAchievementABI,
+          functionName: 'tokenOfOwnerByIndex',
+          args: [address, BigInt(i)]
+        }) as bigint;
+        
+        const achievementData = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: PictogramAchievementABI,
+          functionName: 'achievements',
+          args: [tokenId]
+        }) as readonly [bigint, string, bigint, bigint, bigint, number];
+
+        achievements.push({
+          tokenId,
+          score: achievementData[0],
+          difficulty: achievementData[1],
+          puzzlesSolved: achievementData[2],
+          streak: achievementData[3],
+          timestamp: achievementData[4],
+          tier: achievementData[5]
+        });
       }
       
-      const achievements = await contractService.getOwnedAchievements();
       setOwnedAchievements(achievements);
     } catch (error) {
       console.error('Error fetching achievements:', error);
@@ -624,30 +634,30 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
     if (!isConnected || !address) return;
     
     try {
-      setIsSubmitting(true);
       setMintError('');
       
-      // Mint achievement NFT based on game score, passing account info
-      const result = await contractService.mintAchievement(
-        score, 
-        difficulty, 
-        puzzlesSolved, 
-        streak
-      );
+      // Use wagmi's writeContract
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: PictogramAchievementABI,
+        functionName: 'mintAchievement',
+        args: [address, BigInt(score), difficulty, BigInt(puzzlesSolved), BigInt(streak)]
+      }, {
+        onSuccess: (hash) => {
+          console.log('Transaction successful:', hash);
+          setMintSuccess(true);
+          fetchOwnedAchievements();
+          setShowAchievements(true);
+        },
+        onError: (error) => {
+          console.error('Transaction failed:', error);
+          setMintError(error.message || 'Failed to mint achievement NFT');
+        }
+      });
       
-      if (result.success) {
-        setMintSuccess(true);
-        // Fetch updated achievements
-        await fetchOwnedAchievements();
-        setShowAchievements(true);
-      } else {
-        setMintError(result.error || 'Failed to mint achievement NFT. Please try again.');
-      }
     } catch (error) {
       console.error('Error minting achievement:', error);
       setMintError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -690,10 +700,10 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
             <Button 
               variant="primary" 
               onClick={mintAchievement} 
-              disabled={isSubmitting}
+              disabled={isPending}
               className="w-full"
             >
-              {isSubmitting ? 'Minting...' : 'Mint Achievement NFT'}
+              {isPending ? 'Minting...' : 'Mint Achievement NFT'}
             </Button>
           ) : (
             <div className="text-green-500 font-medium text-center">
@@ -747,4 +757,74 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   );
 }
 
-export default Game;
+
+
+
+async getTokenURI(tokenId: bigint, accountOverride?: string): Promise<string | null> {
+  const publicClient = getPublicClient(config);
+  if (!publicClient) return null;
+
+  try {
+    return await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: PictogramAchievementABI,
+      functionName: 'tokenURI',
+      args: [tokenId]
+    }) as string;
+  } catch (error) {
+    console.error('Error getting token URI:', error);
+    return null;
+  }
+}
+
+// Get total supply of NFTs
+async getTotalSupply(): Promise<bigint> {
+  const publicClient = getPublicClient(config);
+  if (!publicClient) return BigInt(0);
+
+  try {
+    return await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: PictogramAchievementABI,
+      functionName: 'totalSupply'
+    }) as bigint;
+  } catch (error) {
+    console.error('Error getting total supply:', error);
+    return BigInt(0);
+  }
+}
+
+// Determine which tier a score qualifies for
+static getScoreTier(score: number): Tier | null {
+  if (score >= this.GOLD_THRESHOLD) {
+    return Tier.GOLD;
+  } else if (score >= this.SILVER_THRESHOLD) {
+    return Tier.SILVER;
+  } else if (score >= this.BRONZE_THRESHOLD) {
+    return Tier.BRONZE;
+  }
+  return null; // Score too low for any tier
+}
+
+// Helper method to request wallet connection explicitly
+async requestWalletConnection(): Promise<boolean> {
+  try {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Failed to request wallet connection:', error);
+    return false;
+  }
+}
+}
+
+
+// Enum for achievement tiers matching the contract
+export enum Tier {
+  BRONZE = 0,
+  SILVER = 1,
+  GOLD = 2
+}

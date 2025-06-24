@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import { celoAlfajores, hardhat } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
-import { createConfig, WagmiConfig } from "wagmi";
+import { createConfig, WagmiProvider } from "wagmi";
 import { http } from "viem";
 
 // Create config for local development
@@ -14,6 +14,13 @@ const localConfig = createConfig({
   },
 });
 
+const testnetConfig = createConfig({
+  chains: [celoAlfajores],
+  transports: {
+    [celoAlfajores.id]: http(),
+  }
+})
+
 // Determine if we're in development mode
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -22,7 +29,7 @@ export function Providers(props: { children: ReactNode }) {
     <>
       {/* For local development, wrap with WagmiConfig using hardhat chain */}
       {isDevelopment ? (
-        <WagmiConfig config={localConfig}>
+        <WagmiProvider config={localConfig}>
           <MiniKitProvider
             apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
             chain={hardhat}
@@ -37,8 +44,9 @@ export function Providers(props: { children: ReactNode }) {
           >
             {props.children}
           </MiniKitProvider>
-        </WagmiConfig>
+        </WagmiProvider>
       ) : (
+        <WagmiProvider config={testnetConfig}>
         <MiniKitProvider
           apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
           chain={celoAlfajores}
@@ -53,6 +61,7 @@ export function Providers(props: { children: ReactNode }) {
         >
           {props.children}
         </MiniKitProvider>
+        </WagmiProvider>
       )}
     </>
   );
