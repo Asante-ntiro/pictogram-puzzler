@@ -4,8 +4,6 @@ import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useWriteContract } from 'wagmi';
-import { simulateContract, getWalletClient, getPublicClient } from '@wagmi/core'
-import ContractService from "../services/ContractService";
 import { PictogramAchievementABI } from "../services/contracts";
 
 // Remove later
