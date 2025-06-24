@@ -3,9 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "./DemoComponents";
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from '@wagmi/connectors'
-import ContractService from "../services/ContractService";
+import { useAccount, useConnect, useDisconnect, usePublicClient, useWriteContract } from 'wagmi';
+import { PictogramAchievementABI } from "../services/contracts";
+
+// Remove later
+const CONTRACT_ADDRESS = '0xC597FCf9C877943775bE9bb7EEf83DbBEd88A650' as const;
+
 
 const Confetti = dynamic(() => import("react-confetti"), {
   ssr: false,
@@ -71,16 +74,16 @@ type GuessInputProps = {
 
 // Data
 const movies: Movie[] = [
-  // { emojis: "🦁👑", answer: "The Lion King", hint: "Disney animated classic about a young prince", difficulty: 'easy' },
-  // { emojis: "🕷️👨", answer: "Spider-Man", hint: "Marvel superhero who shoots webs", difficulty: 'easy' },
-  // { emojis: "❄️👸", answer: "Frozen", hint: "Let it go, let it go...", difficulty: 'easy' },
-  // { emojis: "🍕🏠", answer: "Home Alone", hint: "Kevin defends his house", difficulty: 'easy' },
-  // { emojis: "🚢🧊💔", answer: "Titanic", hint: "Jack and Rose's tragic love story", difficulty: 'easy' },
+  { emojis: "🦁👑", answer: "The Lion King", hint: "Disney animated classic about a young prince", difficulty: 'easy' },
+  { emojis: "🕷️👨", answer: "Spider-Man", hint: "Marvel superhero who shoots webs", difficulty: 'easy' },
+  { emojis: "❄️👸", answer: "Frozen", hint: "Let it go, let it go...", difficulty: 'easy' },
+  { emojis: "🍕🏠", answer: "Home Alone", hint: "Kevin defends his house", difficulty: 'easy' },
+  { emojis: "🚢🧊💔", answer: "Titanic", hint: "Jack and Rose's tragic love story", difficulty: 'easy' },
   { emojis: "🦈", answer: "Jaws", hint: "You're gonna need a bigger boat", difficulty: 'easy' },
-  // { emojis: "🧙‍♂️💍", answer: "Lord of the Rings", hint: "One ring to rule them all", difficulty: 'easy' },
+  { emojis: "🧙‍♂️💍", answer: "Lord of the Rings", hint: "One ring to rule them all", difficulty: 'easy' },
   { emojis: "🤖🚗", answer: "Transformers", hint: "Robots in disguise", difficulty: 'easy' },
   { emojis: "👻👻👻", answer: "Ghostbusters", hint: "Who you gonna call?", difficulty: 'easy' },
-  // { emojis: "🎪🐘", answer: "Dumbo", hint: "Flying elephant with big ears", difficulty: 'easy' },
+  { emojis: "🎪🐘", answer: "Dumbo", hint: "Flying elephant with big ears", difficulty: 'easy' },
 
   { emojis: "🔴💊🐰🕳️", answer: "The Matrix", hint: "Red pill or blue pill?", difficulty:'hard' },
   { emojis: "🧠🐑🍷", answer: "Silence of the Lambs", hint: "A young FBI trainee seeks help from Hannibal Lecter", difficulty:'hard' },
@@ -248,7 +251,7 @@ export function Game({
   const [hintsUsed, setHintsUsed] = useState(0);
   const [currentPuzzle, setCurrentPuzzle] = useState<Movie | null>(null);
   const [guess, setGuess] = useState("");
-  const [feedback, setFeedback] = useState("Guess the movie from the emojis!");
+  const [feedback, setFeedback] = useState("Guess the movie from the pictogram. You have 6 attempts. You&apos;ll get a score based on how many attempts it takes and how many hints you use.");
   const [isGameActive, setIsGameActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [correctAnimation, setCorrectAnimation] = useState(false);
@@ -329,7 +332,7 @@ export function Game({
       }, 2000);
       // Award more points for hard difficulty
       const difficultyBonus = difficulty === 'hard' ? 2 : 1;
-      const pointsToAdd = (hintsUsed === 0 ? 10 : 5) * difficultyBonus;
+      const pointsToAdd = (hintsUsed === 0 ? 100 : 50) * difficultyBonus;
       setScore(score + pointsToAdd);
       setStreak(streak + 1);
       setIsGameActive(false);
@@ -511,7 +514,9 @@ export function ScoreCard({ score, streak, bestScore, setActiveTab, resetGame }:
   );
 }
 
-// WalletConnectButton component with wagmi hooks
+
+
+// Types
 type WalletConnectButtonProps = {
   score: number;
   difficulty: string;
@@ -529,93 +534,237 @@ type Achievement = {
   tier: number;
 };
 
+// Enum for achievement tiers matching the contract
+export enum Tier {
+  BRONZE = 0,
+  SILVER = 1,
+  GOLD = 2
+}
+
+
+
+// Tier thresholds - move to a config file
+const TIER_THRESHOLDS = {
+  BRONZE: 100,
+  SILVER: 500,
+  GOLD: 1000
+};
+
 function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: WalletConnectButtonProps) {
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const publicClient = usePublicClient();
+  
+  const { writeContract, isPending, error: writeError } = useWriteContract();
+  
+  // State management
   const [mintSuccess, setMintSuccess] = useState(false);
   const [mintError, setMintError] = useState('');
   const [ownedAchievements, setOwnedAchievements] = useState<Achievement[]>([]);
   const [showAchievements, setShowAchievements] = useState(false);
-  // Create a new instance of ContractService
-  const contractService = ContractService.getInstance();
+  const [isLoadingAchievements, setIsLoadingAchievements] = useState(false);
 
-  // Fetch owned achievements whenever the address changes or after successful mint
+  // Reset states when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setMintSuccess(false);
+      setMintError('');
+      setOwnedAchievements([]);
+      setShowAchievements(false);
+    }
+  }, [isConnected]);
+
+  // Handle wallet connection with error handling
+  const handleConnect = useCallback(async () => {
+    try {
+      if (connectors.length === 0) {
+        setMintError('No wallet connectors available');
+        return;
+      }
+
+      // Try to connect with the first available connector
+      const connector = connectors[0];
+      console.log('Connecting with connector:', {
+        name: connector.name,
+        type: connector.type,
+        id: connector.id
+      });
+      
+      await connect({ connector });
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      setMintError('Failed to connect wallet');
+    }
+  }, [connect, connectors]);
+
+  // Fetch user's NFT achievements with error handling and loading state
+  const fetchOwnedAchievements = useCallback(async () => {
+    if (!isConnected || !address || !publicClient) return;
+    
+    setIsLoadingAchievements(true);
+    try {
+      // Get balance of NFTs owned by user
+      const balance = await publicClient.readContract({
+        address: CONTRACT_ADDRESS,
+        abi: PictogramAchievementABI,
+        functionName: 'balanceOf',
+        args: [address]
+      }) as bigint;
+
+      const achievements: Achievement[] = [];
+      
+      // Fetch each NFT's data
+      for (let i = 0; i < Number(balance); i++) {
+        try {
+          const tokenId = await publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: PictogramAchievementABI,
+            functionName: 'tokenOfOwnerByIndex',
+            args: [address, BigInt(i)]
+          }) as bigint;
+          
+          const achievementData = await publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: PictogramAchievementABI,
+            functionName: 'achievements',
+            args: [tokenId]
+          }) as readonly [bigint, string, bigint, bigint, bigint, number];
+
+          achievements.push({
+            tokenId,
+            score: achievementData[0],
+            difficulty: achievementData[1],
+            puzzlesSolved: achievementData[2],
+            streak: achievementData[3],
+            timestamp: achievementData[4],
+            tier: achievementData[5]
+          });
+        } catch (tokenError) {
+          console.error(`Error fetching token ${i}:`, tokenError);
+          // Continue with other tokens even if one fails
+        }
+      }
+      
+      // Sort achievements by timestamp (newest first)
+      achievements.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+      setOwnedAchievements(achievements);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+      setMintError('Failed to load achievements');
+    } finally {
+      setIsLoadingAchievements(false);
+    }
+  }, [isConnected, address, publicClient]);
+
+  // Fetch achievements when wallet connects or after successful mint
   useEffect(() => {
     if (isConnected && address) {
       fetchOwnedAchievements();
     }
-  }, [isConnected, address, mintSuccess]);
+  }, [isConnected, address, mintSuccess, fetchOwnedAchievements]);
 
-  // Fetch user's NFT achievements
-  const fetchOwnedAchievements = async () => {
-    if (!isConnected) return;
-    
-    try {
-      await contractService.connect();
-      const achievements = await contractService.getOwnedAchievements();
-      setOwnedAchievements(achievements);
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
+  // Mint NFT achievement with improved error handling
+  const mintAchievement = useCallback(async () => {
+    if (!isConnected || !address) {
+      setMintError('Wallet not connected');
+      return;
     }
-  };
-
-  // Mint NFT achievement based on game score
-  const mintAchievement = async () => {
-    if (!isConnected) return;
     
     try {
-      setIsSubmitting(true);
       setMintError('');
+      setMintSuccess(false);
       
-      // Initialize the contract service
-      await contractService.connect();
-      
-      // Mint achievement NFT based on game score
-      const result = await contractService.mintAchievement(score, difficulty, puzzlesSolved, streak);
-      
-      if (result.success) {
-        setMintSuccess(true);
-        // Fetch updated achievements
-        await fetchOwnedAchievements();
-        setShowAchievements(true);
-      } else {
-        setMintError(result.error || 'Failed to mint achievement NFT. Please try again.');
-      }
+      writeContract(
+        {
+          address: CONTRACT_ADDRESS,
+          abi: PictogramAchievementABI,
+          functionName: 'mintAchievement',
+          args: [address, BigInt(score), difficulty, BigInt(puzzlesSolved), BigInt(streak)]
+        },
+        {
+          onSuccess: (hash) => {
+            console.log('Transaction successful:', hash);
+            setMintSuccess(true);
+            setShowAchievements(true);
+            // fetchOwnedAchievements will be called via useEffect when mintSuccess changes
+          },
+          onError: (error) => {
+            console.error('Transaction failed:', error);
+            setMintError(error.message || 'Failed to mint achievement NFT');
+          }
+        }
+      );
     } catch (error) {
-      console.error('Error minting achievement:', error);
+      console.error('Error initiating mint:', error);
       setMintError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  }, [isConnected, address, score, difficulty, puzzlesSolved, streak, writeContract]);
 
   // Get tier name from tier number
-  const getTierName = (tier: number): string => {
+  const getTierName = useCallback((tier: number): string => {
     switch (tier) {
-      case 1: return "Bronze";
-      case 2: return "Silver";
-      case 3: return "Gold";
+      case Tier.BRONZE: return "Bronze";
+      case Tier.SILVER: return "Silver";
+      case Tier.GOLD: return "Gold";
       default: return "Unknown";
     }
-  };
+  }, []);
+
+  // Get tier emoji for visual appeal
+  const getTierEmoji = useCallback((tier: number): string => {
+    switch (tier) {
+      case Tier.BRONZE: return "🥉";
+      case Tier.SILVER: return "🥈";
+      case Tier.GOLD: return "🥇";
+      default: return "🏆";
+    }
+  }, []);
+
+  // Determine which tier current score qualifies for
+  const getScoreTier = useCallback((currentScore: number): Tier | null => {
+    if (currentScore >= TIER_THRESHOLDS.GOLD) {
+      return Tier.GOLD;
+    } else if (currentScore >= TIER_THRESHOLDS.SILVER) {
+      return Tier.SILVER;
+    } else if (currentScore >= TIER_THRESHOLDS.BRONZE) {
+      return Tier.BRONZE;
+    }
+    return null;
+  }, []);
+
+  // Format address for display
+  const formatAddress = useCallback((addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  }, []);
+
+  // Current tier for user's score
+  const currentTier = getScoreTier(score);
 
   return (
     <div className="flex flex-col items-center space-y-4">
       {!isConnected ? (
-        <Button 
-          variant="primary" 
-          onClick={() => connect({ connector: injected() })}
-          className="w-full"
-        >
-          Connect Wallet
-        </Button>
+        <div className="flex flex-col items-center space-y-2 w-full">
+          <Button 
+            variant="primary" 
+            onClick={handleConnect}
+            className="w-full"
+            disabled={connectors.length === 0}
+          >
+            {connectors.length === 0 ? 'No Wallet Available' : 'Connect Wallet'}
+          </Button>
+          {connectError && (
+            <div className="text-red-500 text-sm text-center">
+              Connection failed: {connectError.message}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="flex flex-col items-center space-y-3 w-full">
+          {/* Wallet Info */}
           <div className="flex items-center justify-between w-full bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-md">
-            <span className="truncate max-w-[150px]">
-              {address?.slice(0, 6)}...{address?.slice(-4)}
+            <span className="truncate max-w-[150px] font-mono text-sm">
+              {formatAddress(address!)}
             </span>
             <Button 
               variant="secondary" 
@@ -626,59 +775,96 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
             </Button>
           </div>
           
+          {/* Score Tier Info */}
+          {currentTier !== null && (
+            <div className="text-center bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md w-full">
+              <div className="text-sm text-blue-600 dark:text-blue-400">
+                Current Score: {score} ({getTierName(currentTier)} {getTierEmoji(currentTier)})
+              </div>
+            </div>
+          )}
+          
+          {/* Mint Button */}
           {!mintSuccess ? (
             <Button 
               variant="primary" 
               onClick={mintAchievement} 
-              disabled={isSubmitting}
+              disabled={isPending || currentTier === null}
               className="w-full"
             >
-              {isSubmitting ? 'Minting...' : 'Mint Achievement NFT'}
+              {isPending 
+                ? 'Minting...' 
+                : currentTier === null 
+                  ? `Score too low (min ${TIER_THRESHOLDS.BRONZE})` 
+                  : 'Mint Achievement NFT'
+              }
             </Button>
           ) : (
-            <div className="text-green-500 font-medium text-center">
-              Achievement NFT minted successfully! 🎉
+            <div className="text-green-500 font-medium text-center w-full">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <span>Achievement NFT minted successfully!</span>
+                <span>🎉</span>
+              </div>
               <Button
                 variant="secondary"
                 onClick={() => setShowAchievements(!showAchievements)}
-                className="mt-2 w-full"
+                className="w-full"
               >
                 {showAchievements ? 'Hide' : 'Show'} My Achievements
               </Button>
             </div>
           )}
           
-          {mintError && (
-            <div className="text-red-500 text-sm">
-              {mintError}
+          {/* Error Display */}
+          {(mintError || writeError) && (
+            <div className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-md w-full">
+              {mintError || writeError?.message}
             </div>
           )}
 
-          {showAchievements && ownedAchievements.length > 0 && (
+          {/* Achievements Display */}
+          {showAchievements && (
             <div className="w-full mt-4 space-y-3">
-              <h3 className="font-bold text-center">Your Achievements</h3>
-              <div className="space-y-2">
-                {ownedAchievements.map((achievement) => (
-                  <div key={achievement.tokenId.toString()} className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
-                    <div className="font-semibold">
-                      {getTierName(achievement.tier)} Achievement #{achievement.tokenId.toString()}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      <div>Score: {achievement.score.toString()}</div>
-                      <div>Difficulty: {achievement.difficulty}</div>
-                      <div>Puzzles Solved: {achievement.puzzlesSolved.toString()}</div>
-                      <div>Streak: {achievement.streak.toString()}</div>
-                      <div>Date: {new Date(Number(achievement.timestamp) * 1000).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold">Your Achievements</h3>
+                {isLoadingAchievements && (
+                  <div className="text-sm text-gray-500">Loading...</div>
+                )}
               </div>
-            </div>
-          )}
-
-          {showAchievements && ownedAchievements.length === 0 && (
-            <div className="text-center text-gray-500">
-              You don't have any achievement NFTs yet.
+              
+              {ownedAchievements.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {ownedAchievements.map((achievement) => (
+                    <div key={achievement.tokenId.toString()} className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-3 rounded-md border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold flex items-center space-x-2">
+                          <span>{getTierEmoji(achievement.tier)}</span>
+                          <span>{getTierName(achievement.tier)} Achievement</span>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          #{achievement.tokenId.toString()}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div>Score: {achievement.score.toString()}</div>
+                        <div>Difficulty: {achievement.difficulty}</div>
+                        <div>Puzzles: {achievement.puzzlesSolved.toString()}</div>
+                        <div>Streak: {achievement.streak.toString()}</div>
+                        <div className="col-span-2 text-xs">
+                          {new Date(Number(achievement.timestamp) * 1000).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  {isLoadingAchievements 
+                    ? "Loading achievements..." 
+                    : "You don't have any achievement NFTs yet."
+                  }
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -687,4 +873,39 @@ function WalletConnectButton({ score, difficulty, puzzlesSolved, streak }: Walle
   );
 }
 
-export default Game;
+// Utility functions that can be used elsewhere in your app
+export const getTokenURI = async (
+  tokenId: bigint, 
+  publicClient: any
+): Promise<string | null> => {
+  if (!publicClient) return null;
+
+  try {
+    return await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: PictogramAchievementABI,
+      functionName: 'tokenURI',
+      args: [tokenId]
+    }) as string;
+  } catch (error) {
+    console.error('Error getting token URI:', error);
+    return null;
+  }
+};
+
+export const getTotalSupply = async (publicClient: any): Promise<bigint> => {
+  if (!publicClient) return BigInt(0);
+
+  try {
+    return await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: PictogramAchievementABI,
+      functionName: 'totalSupply'
+    }) as bigint;
+  } catch (error) {
+    console.error('Error getting total supply:', error);
+    return BigInt(0);
+  }
+};
+
+export default WalletConnectButton;
