@@ -6,8 +6,6 @@ const nextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
   },
-};
-module.exports = {
   async redirects() {
     return [
       {
@@ -17,5 +15,6 @@ module.exports = {
       },
     ]
   },
-}
+};
+
 export default nextConfig;
