@@ -4,11 +4,15 @@ import { type ReactNode } from "react";
 import { celoAlfajores, hardhat } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 import { createConfig, WagmiProvider } from "wagmi";
+import { injected } from 'wagmi/connectors'
+
 import { http } from "viem";
 
 // Create config for local development
 const localConfig = createConfig({
   chains: [hardhat],
+  connectors: [
+    injected(),],
   transports: {
     [hardhat.id]: http(),
   },
@@ -16,6 +20,8 @@ const localConfig = createConfig({
 
 const testnetConfig = createConfig({
   chains: [celoAlfajores],
+  connectors: [
+    injected(),],
   transports: {
     [celoAlfajores.id]: http(),
   }
