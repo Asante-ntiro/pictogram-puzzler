@@ -277,7 +277,7 @@ export function Game({
     if (availableMovies.length > 0 && !currentPuzzle) {
       startNewPuzzle();
     }
-  }, [availableMovies]);
+  }, [currentPuzzle, availableMovies]);
 
   // Start a new puzzle
   const startNewPuzzle = useCallback(() => {
